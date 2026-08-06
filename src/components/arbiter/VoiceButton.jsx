@@ -44,6 +44,7 @@ export default function VoiceButton({ value, onChange, language = 'en' }) {
   const baseTextRef = useRef('');
   const finalTextRef = useRef('');
   const restartTimeoutRef = useRef(null);
+  const audioContextRef = useRef(null);
 
   // --- MediaRecorder refs (Persian) ---
   const mediaRecorderRef = useRef(null);
@@ -65,14 +66,17 @@ export default function VoiceButton({ value, onChange, language = 'en' }) {
       let interimText = '';
       let newFinalText = finalTextRef.current;
       for (let i = event.resultIndex; i < event.results.length; i++) {
-        const transcript = event.results[i][0].transcript;
-        if (event.results[i].isFinal) newFinalText += transcript;
-        else interimText += transcript;
+        const transcript = event.results[i][0].transcript || '';
+        if (event.results[i].isFinal) {
+          newFinalText = [newFinalText, transcript].filter(Boolean).join(' ').trim();
+        } else {
+          interimText = [interimText, transcript].filter(Boolean).join(' ').trim();
+        }
       }
       finalTextRef.current = newFinalText;
       const base = baseTextRef.current;
       const parts = [base, newFinalText, interimText].filter(s => s && s.trim());
-      let combined = parts.join(' ').replace(/\s+/g, ' ').trim();
+      const combined = parts.join(' ').replace(/\s+/g, ' ').trim();
       onChangeRef.current(combined);
     };
 
@@ -94,7 +98,7 @@ export default function VoiceButton({ value, onChange, language = 'en' }) {
       if (isRecordingRef.current) {
         restartTimeoutRef.current = setTimeout(() => {
           if (isRecordingRef.current && recognitionRef.current) {
-            recognitionRef.current.lang = 'en-US';
+            recognitionRef.current.lang = languageRef.current === 'fa' ? 'fa-IR' : 'en-US';
             try { recognitionRef.current.start(); } catch (e) { }
           }
         }, 150);
@@ -118,7 +122,8 @@ export default function VoiceButton({ value, onChange, language = 'en' }) {
       setErrorMsg('Voice not supported in this browser.');
       return;
     }
-    recognitionRef.current.lang = 'en-US';
+    const recognitionLang = languageRef.current === 'fa' ? 'fa-IR' : 'en-US';
+    recognitionRef.current.lang = recognitionLang;
     baseTextRef.current = valueRef.current || '';
     finalTextRef.current = '';
     isRecordingRef.current = true;
@@ -175,11 +180,21 @@ export default function VoiceButton({ value, onChange, language = 'en' }) {
   // --- Persian: MediaRecorder + Whisper transcription ---
   const startMediaRecorder = async () => {
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const stream = await navigator.mediaDevices.getUserMedia({
+        audio: {
+          echoCancellation: true,
+          noiseSuppression: true,
+          autoGainControl: true,
+          channelCount: 1
+        }
+      });
       streamRef.current = stream;
       audioChunksRef.current = [];
 
-      const mediaRecorder = new MediaRecorder(stream);
+      const preferredMimeType = ['audio/webm;codecs=opus', 'audio/webm', 'audio/mp4'].find(type => MediaRecorder.isTypeSupported(type));
+      const mediaRecorder = preferredMimeType
+        ? new MediaRecorder(stream, { mimeType: preferredMimeType })
+        : new MediaRecorder(stream);
       mediaRecorderRef.current = mediaRecorder;
 
       mediaRecorder.ondataavailable = (event) => {
@@ -203,8 +218,9 @@ export default function VoiceButton({ value, onChange, language = 'en' }) {
           let transcriptResponse;
           let lastError;
           const attemptPayloads = [
+            { audio_url: file_url, language: preferredLanguage, task: 'transcribe', response_format: 'json' },
+            { audio_url: file_url, language: isPersian ? 'fa-IR' : 'en-US', task: 'transcribe', response_format: 'json' },
             { audio_url: file_url, language: preferredLanguage },
-            { audio_url: file_url, language: isPersian ? 'fa-IR' : 'en-US' },
             { audio_url: file_url }
           ];
 
