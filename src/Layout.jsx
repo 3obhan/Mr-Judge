@@ -1,10 +1,18 @@
 import React from 'react';
+import { Link } from 'react-router-dom';
+import Logo from '@/components/arbiter/Logo';
+import { createPageUrl } from '@/utils';
+import { Button } from '@/components/ui/button';
 
 /**
  * Layout Component
- * Minimal wrapper that provides consistent styling across pages
+ * Provides consistent styling and a shared site header across pages.
  */
-export default function Layout({ children }) {
+export default function Layout({ children, currentPageName }) {
+  const isHome = currentPageName === 'Home';
+  const isCredits = currentPageName === 'Credits';
+  const isNewDispute = currentPageName === 'NewDispute';
+
   return (
     <div className="min-h-screen bg-gradient-to-b from-slate-50 to-white">
       <style>{`
@@ -55,8 +63,34 @@ export default function Layout({ children }) {
           color: var(--navy);
         }
       `}</style>
-      
-      {children}
+
+      <header className="sticky top-0 z-30 border-b border-slate-200/80 bg-white/80 backdrop-blur-md">
+        <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-3 sm:px-6">
+          <Link to={createPageUrl('Home')} className="flex items-center gap-3">
+            <Logo size="small" animated={false} />
+          </Link>
+
+          <nav className="flex items-center gap-2">
+            <Link to={createPageUrl('Home')}>
+              <Button variant={isHome ? 'secondary' : 'ghost'} size="sm" className="text-slate-700">
+                Home
+              </Button>
+            </Link>
+            <Link to={createPageUrl('NewDispute')}>
+              <Button variant={isNewDispute ? 'secondary' : 'ghost'} size="sm" className="text-slate-700">
+                New Dispute
+              </Button>
+            </Link>
+            <Link to={createPageUrl('Credits')}>
+              <Button variant={isCredits ? 'secondary' : 'ghost'} size="sm" className="text-slate-700">
+                Credits
+              </Button>
+            </Link>
+          </nav>
+        </div>
+      </header>
+
+      <main>{children}</main>
     </div>
   );
 }

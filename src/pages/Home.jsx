@@ -2,11 +2,10 @@ import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Button } from "@/components/ui/button";
-import { ArrowRight, Shield, Brain, FileText, Sparkles } from 'lucide-react';
+import { ArrowRight, Shield, Brain, FileText } from 'lucide-react';
 import { createPageUrl } from "@/utils";
 import { base44 } from '@/api/base44Client';
 import Logo from "@/components/arbiter/Logo";
-import CreditsDisplay from "@/components/arbiter/CreditsDisplay";
 
 /**
  * Home Page
@@ -59,17 +58,6 @@ export default function Home() {
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-slate-50 to-white flex flex-col">
-      {/* Top Bar */}
-      {user && (
-        <div className="sticky top-0 z-10 bg-white/80 backdrop-blur-md border-b border-slate-100">
-          <div className="max-w-6xl mx-auto px-6 py-3 flex items-center justify-end">
-            <Link to={createPageUrl('Credits')}>
-              <CreditsDisplay credits={credits?.remaining_credits || 0} compact />
-            </Link>
-          </div>
-        </div>
-      )}
-
       {/* Hero Section */}
       <div className="flex-1 flex flex-col items-center justify-center px-6 py-16">
         {/* Logo */}

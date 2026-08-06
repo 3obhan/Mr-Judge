@@ -4,9 +4,7 @@ import { motion } from 'framer-motion';
 import { base44 } from '@/api/base44Client';
 import { createPageUrl } from "@/utils";
 import DisputeForm from "@/components/arbiter/DisputeForm";
-import CreditsDisplay from "@/components/arbiter/CreditsDisplay";
-import Logo from "@/components/arbiter/Logo";
-import { ArrowLeft, AlertCircle } from 'lucide-react';
+import { AlertCircle } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import { Link } from 'react-router-dom';
 import { Card } from "@/components/ui/card";
@@ -26,7 +24,7 @@ export default function NewDispute() {
       const isAuth = await base44.auth.isAuthenticated();
       if (!isAuth) {
         setLoadingCredits(false);
-        base44.auth.redirectToLogin(window.location.pathname);
+        base44.auth.redirectToLogin(window.location.href);
         return;
       }
 
@@ -189,22 +187,6 @@ ${formData.personB_statement}
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-slate-50 to-white">
-      {/* Header */}
-      <div className="sticky top-0 z-10 bg-white/80 backdrop-blur-md border-b border-slate-100">
-        <div className="max-w-4xl mx-auto px-6 py-4 flex items-center justify-between">
-          <Link to={createPageUrl('Home')}>
-            <Button variant="ghost" size="sm" className="text-slate-600 hover:text-slate-800">
-              <ArrowLeft className="w-4 h-4 mr-2" />
-              Back
-            </Button>
-          </Link>
-          <Logo size="small" animated={false} />
-          <Link to={createPageUrl('Credits')}>
-            <CreditsDisplay credits={credits?.remaining_credits || 0} compact />
-          </Link>
-        </div>
-      </div>
-
       {/* Content Section */}
       <div className="px-6 py-12">
         {(credits?.remaining_credits || 0) <= 0 && (

@@ -1,12 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { base44 } from '@/api/base44Client';
 import { createPageUrl } from "@/utils";
 import VerdictDisplay from "@/components/arbiter/VerdictDisplay";
-import Logo from "@/components/arbiter/Logo";
-import { ArrowLeft, Loader2 } from 'lucide-react';
-import { Button } from "@/components/ui/button";
+import { Loader2 } from 'lucide-react';
 
 /**
  * Results Page
@@ -70,20 +68,6 @@ export default function Results() {
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-slate-50 to-white">
-      {/* Header */}
-      <div className="sticky top-0 z-10 bg-white/80 backdrop-blur-md border-b border-slate-100">
-        <div className="max-w-4xl mx-auto px-6 py-4 flex items-center justify-between">
-          <Link to={createPageUrl('Home')}>
-            <Button variant="ghost" size="sm" className="text-slate-600 hover:text-slate-800">
-              <ArrowLeft className="w-4 h-4 mr-2" />
-              Home
-            </Button>
-          </Link>
-          <Logo size="small" animated={false} />
-          <div className="w-20" /> {/* Spacer for centering */}
-        </div>
-      </div>
-
       {/* Results Section */}
       <div className="px-6 py-12 md:py-16">
         <VerdictDisplay 
