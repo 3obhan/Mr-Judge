@@ -24,11 +24,11 @@ export default function Logo({ size = 'default', animated = true }) {
   return (
     <Wrapper {...wrapperProps} className="flex flex-col items-center gap-3">
       <img
-        src="/logo.svg"
+        src="/mrjudge-logo.png"
         alt="Mr Judge logo"
         width={width}
         height={height}
-        className="drop-shadow-lg rounded-2xl"
+        className="drop-shadow-lg rounded-2xl object-contain"
       />
 
       <div className="flex flex-col items-center">
