@@ -2,9 +2,12 @@ import base44 from "@base44/vite-plugin"
 import react from "@vitejs/plugin-react"
 import { defineConfig } from "vite"
 
+const isCloudflarePages = process.env.CF_PAGES === "1";
+const basePath = isCloudflarePages ? "/" : (process.env.BASE_PATH || "/Mr-Judge/");
+
 // https://vite.dev/config/
 export default defineConfig({
-  base: "/Mr-Judge/",
+  base: basePath,
   logLevel: "error", // Suppress warnings, only show errors
   plugins: [
     base44({
