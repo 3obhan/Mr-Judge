@@ -3,7 +3,8 @@ import react from "@vitejs/plugin-react"
 import { defineConfig } from "vite"
 
 const isCloudflarePages = process.env.CF_PAGES === "1";
-const basePath = isCloudflarePages ? "/" : (process.env.BASE_PATH || "/Mr-Judge/");
+const isGitHubPages = process.env.GITHUB_ACTIONS === "true";
+const basePath = isCloudflarePages ? "/" : (isGitHubPages ? "/Mr-Judge/" : (process.env.BASE_PATH || "/Mr-Judge/"));
 
 // https://vite.dev/config/
 export default defineConfig({
