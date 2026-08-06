@@ -138,6 +138,40 @@ export default function VoiceButton({ value, onChange, language = 'en' }) {
     setIsRecording(false);
   };
 
+  const extractTranscriptText = (response) => {
+    if (!response) return '';
+    if (typeof response === 'string') return response;
+    if (typeof response === 'object') {
+      if (typeof response.text === 'string') return response.text;
+      if (typeof response.transcript === 'string') return response.transcript;
+      if (typeof response.result === 'string') return response.result;
+      if (typeof response.output === 'string') return response.output;
+      if (Array.isArray(response.segments)) {
+        return response.segments.map(segment => segment.text || segment.transcript || '').filter(Boolean).join(' ');
+      }
+    }
+    return String(response);
+  };
+
+  const normalizeTranscriptText = (text) => {
+    if (!text) return '';
+
+    let normalized = String(text)
+      .replace(/\r/g, '\n')
+      .replace(/[\u200B-\u200D\u2060]/g, '')
+      .replace(/\s+/g, ' ')
+      .trim();
+
+    normalized = normalized
+      .replace(/\s+([،؛:!?])/g, '$1')
+      .replace(/([،؛:!?])(?=\S)/g, '$1 ')
+      .replace(/\s+([.])/g, '$1')
+      .replace(/([.])(?=\S)/g, '$1 ')
+      .trim();
+
+    return normalized;
+  };
+
   // --- Persian: MediaRecorder + Whisper transcription ---
   const startMediaRecorder = async () => {
     try {
@@ -163,12 +197,40 @@ export default function VoiceButton({ value, onChange, language = 'en' }) {
         try {
           // Upload then transcribe with Whisper
           const { file_url } = await base44.integrations.Core.UploadFile({ file: audioFile });
-          const transcript = await base44.integrations.Core.TranscribeAudio({ audio_url: file_url });
+          const isPersian = languageRef.current === 'fa';
+          const preferredLanguage = isPersian ? 'fa' : 'en';
+
+          let transcriptResponse;
+          let lastError;
+          const attemptPayloads = [
+            { audio_url: file_url, language: preferredLanguage },
+            { audio_url: file_url, language: isPersian ? 'fa-IR' : 'en-US' },
+            { audio_url: file_url }
+          ];
+
+          for (const payload of attemptPayloads) {
+            try {
+              transcriptResponse = await base44.integrations.Core.TranscribeAudio(payload);
+              break;
+            } catch (error) {
+              lastError = error;
+            }
+          }
+
+          if (!transcriptResponse) {
+            throw lastError || new Error('Transcription failed');
+          }
+
+          const rawTranscript = extractTranscriptText(transcriptResponse);
+          const normalizedTranscript = normalizeTranscriptText(rawTranscript);
 
           // Append to existing text
           const current = valueRef.current || '';
-          const newText = (current + ' ' + transcript).replace(/\s+/g, ' ').trim();
-          onChangeRef.current(newText);
+          const combinedText = [current, normalizedTranscript].filter(Boolean).join(' ').trim();
+          const finalText = isPersian
+            ? combinedText.replace(/\s+/g, ' ').trim()
+            : combinedText;
+          onChangeRef.current(finalText);
         } catch (err) {
           console.error('Transcription failed:', err);
           setErrorMsg('خطا در تبدیل صوت به متن. دوباره تلاش کنید.');
