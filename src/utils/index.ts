@@ -1,11 +1,12 @@
 export function createPageUrl(pageName: string) {
     const slug = pageName.replace(/ /g, '-');
-    const baseUrl = import.meta.env.BASE_URL || '/';
-    const normalizedBase = baseUrl.endsWith('/') ? baseUrl : `${baseUrl}/`;
+    const baseUrl = import.meta.env.BASE_URL.endsWith('/')
+        ? import.meta.env.BASE_URL
+        : `${import.meta.env.BASE_URL}/`;
 
     if (!slug || slug === 'Home') {
-        return normalizedBase === '/' ? '/' : normalizedBase.replace(/\/$/, '');
+        return baseUrl;
     }
 
-    return `${normalizedBase.replace(/\/$/, '')}/${slug}`;
+    return `${baseUrl}#/${slug}`;
 }

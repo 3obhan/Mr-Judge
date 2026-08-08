@@ -1,3 +1,5 @@
+import { analyzeDispute } from '@/lib/dispute-analysis';
+
 const STORAGE_KEYS = {
   user: 'mrjudge_local_user',
   credits: 'mrjudge_local_credits',
@@ -87,41 +89,30 @@ const saveLocalDispute = (payload) => {
 };
 
 const parseAnalysisPrompt = (prompt) => {
-  const match = prompt.match(/PERSON A['’]s STATEMENT:\s*([\s\S]*?)PERSON B['’]s STATEMENT:\s*([\s\S]*)/i);
+  const englishMatch = prompt.match(/PERSON A['’]s STATEMENT:\s*([\s\S]*?)PERSON B['’]s STATEMENT:\s*([\s\S]*)/i);
+  const persianMatch = prompt.match(/بیانیه شخص الف:\s*([\s\S]*?)بیانیه شخص ب:\s*([\s\S]*)/i);
+
+  if (persianMatch) {
+    return {
+      personA: persianMatch[1]?.trim() || '',
+      personB: persianMatch[2]?.trim() || ''
+    };
+  }
+
   return {
-    personA: match?.[1]?.trim() || '',
-    personB: match?.[2]?.trim() || ''
+    personA: englishMatch?.[1]?.trim() || '',
+    personB: englishMatch?.[2]?.trim() || ''
   };
-};
-
-const calcLocalHeuristicScore = (statement) => {
-  const normalized = String(statement || '').toLowerCase();
-  const strongTerms = ['should', 'must', 'wrong', 'fair', 'agreed', 'promise', 'refund', 'breach', 'late', 'owe', 'responsible', 'clear', 'unfair', 'violated', 'contract'];
-  const weakTerms = ['maybe', 'perhaps', 'unclear', 'sorry', 'unknown', 'not sure'];
-  const strongCount = strongTerms.filter((term) => normalized.includes(term)).length;
-  const weakCount = weakTerms.filter((term) => normalized.includes(term)).length;
-  const lengthScore = Math.min(35, Math.round(normalized.split(/\s+/).filter(Boolean).length / 2));
-
-  return Math.max(20, Math.min(95, 50 + strongCount * 7 + lengthScore - weakCount * 5));
 };
 
 const buildLocalAnalysisResult = (prompt) => {
   const { personA, personB } = parseAnalysisPrompt(prompt);
-  const personAScore = calcLocalHeuristicScore(personA);
-  const personBScore = calcLocalHeuristicScore(personB);
-
-  let verdict = 'Both parties are partially justified';
-  if (personAScore > personBScore + 10) verdict = 'Person A is more justified';
-  else if (personBScore > personAScore + 10) verdict = 'Person B is more justified';
-
-  const explanation = `This local analysis compares the relative clarity, responsibility language, and strength of each statement. The result is based on the wording and structure of the dispute rather than a live external model.`;
-
-  return {
-    personA_score: Math.round(personAScore),
-    personB_score: Math.round(personBScore),
-    verdict,
-    explanation
-  };
+  const isPersian = /[ا-ی]/.test(prompt);
+  return analyzeDispute({
+    personA_statement: personA,
+    personB_statement: personB,
+    language: isPersian ? 'fa' : 'en'
+  });
 };
 
 export function createLocalBase44LikeClient() {
