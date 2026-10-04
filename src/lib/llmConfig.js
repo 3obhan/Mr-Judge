@@ -1,36 +1,27 @@
-// مولفه PayPalButton
-const PAYPAL_RECEIVER_EMAIL = "sobhan.ganji@icloud.com";
-const PAYPAL_ME_LINK = "paypal.me/ganjisobhan";
-const APP_BASE_URL = "https://mrjudge.com"; // دامنه اپ
+/**
+ * LLM Configuration
+ *
+ * To remove integration credit costs, this app uses Google's Gemini API
+ * (free tier: 15 requests/min, 1500 requests/day — $0 cost).
+ *
+ * SETUP:
+ * 1. Get a FREE API key from Google AI Studio: https://aistudio.google.com/apikey
+ * 2. Paste it below between the quotes.
+ * 3. (Recommended) In Google AI Studio, restrict the key to your app's domain
+ *    (e.g. mrjudge.base44.app) so it can't be used from other sites.
+ *
+ * NOTE: This key is embedded in the frontend code. Restricting it to your
+ * domain in Google AI Studio prevents abuse. For production use with many
+ * users, upgrade to Builder+ and move this to a backend function.
+ */
+export const GEMINI_API_KEY = "";
 
-// هنگام کلیک روی پکیج:
-function handleBuyCredits(package) {
-  // ساخت لینک پرداخت مستقیم به PayPal.me
-  const amount = package.price; // مثلا 4.99
-  const returnUrl = `${APP_BASE_URL}/credits?success=1&package=${package.id}&amount=${amount}`;
-  
-  // یا استفاده از PayPal Smart Buttons با receiver email
-  window.paypal.Buttons({
-    createOrder: function(data, actions) {
-      return actions.order.create({
-        purchase_units: [{
-          amount: { value: amount },
-          payee: { email_address: "sobhan.ganji@icloud.com" } // گیرنده پرداخت
-        }]
-      });
-    },
-    onApprove: function(data, actions) {
-      return actions.order.capture().then(function(details) {
-        // پرداخت موفق - اضافه کردن کردیت به کاربر
-        window.location.href = returnUrl;
-      });
-    }
-  }).render('#paypal-button-container');
-}
+/**
+ * The Gemini model to use. "gemini-2.0-flash" is fast and free-tier eligible.
+ */
+export const GEMINI_MODEL = "gemini-2.0-flash";
 
-// روش جایگزین با PayPal.me (بسیار سادهتر، بدون SDK):
-function handleBuyWithPayPalMe(package) {
-  const amount = package.price.toFixed(2);
-  window.location.href = `https://paypal.me/ganjisobhan/${amount}`;
-  // بعد از پرداخت، کاربر دستی برمیگردد به اپ
-}
+/**
+ * Whether the Gemini key is configured.
+ */
+export const isGeminiConfigured = () => GEMINI_API_KEY && GEMINI_API_KEY.length > 10;
