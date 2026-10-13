@@ -1,0 +1,1 @@
+MrJudge is an AI-powered neutral judging platform. Its core purpose is to receive two statements from two people about the same subject and intelligently evaluate both sides, independently score them from 0 to 100, explain the reasoning, identify strengths and weaknesses, and produce a professional final judgment.
