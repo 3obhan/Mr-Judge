@@ -1,0 +1,4 @@
+# /etc/caddy/Caddyfile : automatic HTTPS for the relay. Replace pay.yourdomain.com with a name whose A record points to this machine.
+pay.yourdomain.com {
+    reverse_proxy 127.0.0.1:8080
+}

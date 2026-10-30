@@ -1,0 +1,12 @@
+import react from '@vitejs/plugin-react'
+import path from 'path'
+import { defineConfig } from 'vite'
+
+// Every language lives under its own path (/de/…), so files are addressed from the site root.
+export default defineConfig(() => ({
+  base: '/',
+  plugins: [react()],
+  resolve: {
+    alias: { '@': path.resolve(__dirname, './src') },
+  },
+}));

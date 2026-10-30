@@ -1,0 +1,17 @@
+# systemd unit: copy to /etc/systemd/system/zarinpal-relay.service  (see راهنما.md)
+[Unit]
+Description=ZarinPal relay
+After=network-online.target
+
+[Service]
+WorkingDirectory=/opt/relay
+EnvironmentFile=/opt/relay/relay.env
+ExecStart=/usr/bin/node /opt/relay/zarinpal-relay.mjs
+Restart=always
+RestartSec=3
+User=nobody
+Group=nogroup
+NoNewPrivileges=true
+
+[Install]
+WantedBy=multi-user.target

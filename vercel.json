@@ -1,0 +1,8 @@
+{
+  "functions": {
+    "api/gemini.js": { "maxDuration": 60 }
+  },
+  "rewrites": [
+    { "source": "/:lang(en|fa|ar|tr|de|fr|es|ru)/:path*", "destination": "/:lang/index.html" }
+  ]
+}
