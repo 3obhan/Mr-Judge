@@ -34,7 +34,6 @@ export default async function handler(req, res) {
     methods: {
       stripe: stripeConfigured(),
       paypal: !!(env.PAYPAL_CLIENT_ID && env.PAYPAL_CLIENT_SECRET),
-      zarinpal: !!env.ZARINPAL_MERCHANT_ID,
       zibal: !!env.ZIBAL_MERCHANT,
     },
     stripeMode: key.startsWith('sk_live_') || key.startsWith('rk_live_') ? 'live' : key ? 'test' : null,
