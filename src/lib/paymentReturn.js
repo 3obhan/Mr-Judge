@@ -1,10 +1,10 @@
 /**
  * After paying, the payment page sends the buyer back to the site with a normal query string (before any "#"):
- *   ZarinPal  https://site/path?zp=1&Authority=A000...&Status=OK|NOK
+ *   Zibal     https://site/path?zp=1&Authority=A000...&Status=OK|NOK
  *   PayPal    https://site/path?pp=1&token=<ORDER_ID>&PayerID=...
  *   Stripe    https://site/path?pay=stripe&session_id=cs_...
  * (the address starts with the language: /de/?pay=stripe&session_id=…). This runs once at start-up: it remembers the payment, cleans the address bar and opens the Credits page, which then asks
- * the server to verify the payment with the provider (api/zarinpal.js, api/paypal.js, api/stripe.js).
+ * the server to verify the payment with the provider (api/zibal.js, api/paypal.js, api/stripe.js).
  */
 import { splitLangPath, withLang } from '@/lib/langPath';
 
@@ -17,7 +17,7 @@ export function captureReturnFromPayment() {
     let found = null; let cancelled = false;
     if (q.get('zp') === '1') {
       const a = q.get('Authority');
-      if (q.get('Status') === 'OK' && /^[A-Za-z0-9]{10,64}$/.test(a || '')) found = { provider: 'zarinpal', id: a }; else cancelled = true;
+      if (q.get('Status') === 'OK' && /^[A-Za-z0-9]{10,64}$/.test(a || '')) found = { provider: 'zibal', id: a }; else cancelled = true;
     } else if (q.get('pp') === '1') {
       const t = q.get('token');
       if (/^[A-Za-z0-9_-]{5,64}$/.test(t || '')) found = { provider: 'paypal', id: t }; else cancelled = true;
