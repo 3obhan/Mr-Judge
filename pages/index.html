@@ -1,0 +1,147 @@
+<!doctype html>
+<html lang="fa" dir="rtl">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta
+      name="description"
+      content="آقای داور؛ تحلیل هوشمند، منصفانه و بی‌طرفانه‌ی اختلاف‌ها."
+    />
+    <meta name="theme-color" content="#101a2b" />
+    <title>آقای داور | تحلیل بی‌طرفانه‌ی اختلاف‌ها</title>
+    <style>
+      :root {
+        color-scheme: dark;
+        font-family: Vazirmatn, Tahoma, sans-serif;
+        background: #101a2b;
+        color: #f5f2eb;
+        font-synthesis: none;
+        text-rendering: optimizeLegibility;
+        -webkit-font-smoothing: antialiased;
+        --gold: #e6bd67;
+        --muted: #b7c0cf;
+        --panel: #18263b;
+      }
+
+      * { box-sizing: border-box; }
+      body { margin: 0; min-width: 320px; }
+      a { color: inherit; }
+      .shell { width: min(1120px, calc(100% - 40px)); margin-inline: auto; }
+      header { padding-block: 26px; }
+      .brand { display: inline-flex; align-items: center; gap: 12px; text-decoration: none; font-weight: 700; }
+      .brand-mark {
+        display: grid;
+        width: 42px;
+        aspect-ratio: 1;
+        place-items: center;
+        border: 1px solid #e6bd6766;
+        border-radius: 14px;
+        color: var(--gold);
+        font-size: 23px;
+      }
+      .hero { display: grid; min-height: 570px; align-items: center; padding-block: 70px 96px; }
+      .hero-copy { max-width: 700px; }
+      .eyebrow { color: var(--gold); font-size: 14px; font-weight: 700; letter-spacing: .02em; }
+      h1 { margin: 18px 0; font-size: clamp(42px, 7vw, 76px); line-height: 1.22; letter-spacing: -.04em; }
+      .lead { max-width: 620px; color: var(--muted); font-size: clamp(18px, 2.4vw, 22px); line-height: 1.9; }
+      .actions { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 32px; }
+      .button {
+        display: inline-flex;
+        min-height: 50px;
+        align-items: center;
+        justify-content: center;
+        padding: 0 22px;
+        border: 1px solid #ffffff25;
+        border-radius: 12px;
+        background: transparent;
+        color: #f5f2eb;
+        font: inherit;
+        font-weight: 700;
+        text-decoration: none;
+        transition: transform .18s ease, border-color .18s ease, background .18s ease;
+      }
+      .button:hover { transform: translateY(-2px); border-color: var(--gold); }
+      .button.primary { border-color: var(--gold); background: var(--gold); color: #101a2b; }
+      .features { padding-block: 30px 92px; }
+      .section-title { margin: 0 0 24px; font-size: clamp(25px, 4vw, 36px); }
+      .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+      .card { min-height: 190px; padding: 25px; border: 1px solid #ffffff12; border-radius: 18px; background: var(--panel); }
+      .card-icon { color: var(--gold); font-size: 24px; }
+      .card h3 { margin: 14px 0 8px; font-size: 19px; }
+      .card p { margin: 0; color: var(--muted); line-height: 1.9; }
+      .notice { margin-bottom: 72px; padding: 20px 24px; border-right: 3px solid var(--gold); border-radius: 8px; background: #e6bd6710; color: var(--muted); line-height: 1.9; }
+      .notice strong { color: #f5f2eb; }
+      footer { padding-block: 24px 36px; border-top: 1px solid #ffffff15; color: var(--muted); font-size: 14px; }
+
+      @media (max-width: 720px) {
+        .hero { min-height: auto; padding-block: 64px 74px; }
+        .grid { grid-template-columns: 1fr; }
+        .card { min-height: auto; }
+      }
+      @media (prefers-reduced-motion: reduce) {
+        *, *::before, *::after { scroll-behavior: auto !important; transition-duration: .01ms !important; }
+      }
+    </style>
+  </head>
+  <body>
+    <header class="shell">
+      <a class="brand" href="./" aria-label="آقای داور، صفحهٔ اصلی">
+        <span class="brand-mark" aria-hidden="true">⚖</span>
+        <span>آقای داور</span>
+      </a>
+    </header>
+
+    <main>
+      <section class="hero shell">
+        <div class="hero-copy">
+          <div class="eyebrow">منصفانه · بی‌طرف · تحلیلی</div>
+          <h1>برای شنیدن هر دو طرف،<br />یک داور بی‌طرف.</h1>
+          <p class="lead">
+            آقای داور به هر دو دیدگاه گوش می‌دهد و با کمک هوش مصنوعی،
+            تحلیلی روشن از اختلاف ارائه می‌کند؛ بدون جانبداری و قضاوت اخلاقی.
+          </p>
+          <div class="actions">
+            <a class="button primary" href="https://github.com/3obhan/Mr-Judge">
+              مشاهدهٔ پروژه در گیت‌هاب
+            </a>
+            <a class="button" href="https://github.com/3obhan/Mr-Judge">
+              کد منبع
+            </a>
+          </div>
+        </div>
+      </section>
+
+      <section class="features shell" aria-labelledby="features-title">
+        <h2 class="section-title" id="features-title">تحلیل، نه قضاوت</h2>
+        <div class="grid">
+          <article class="card">
+            <span class="card-icon" aria-hidden="true">◎</span>
+            <h3>بررسی هر دو دیدگاه</h3>
+            <p>استدلال‌ها را کنار هم می‌گذارد و به انسجام و تناسب آن‌ها توجه می‌کند.</p>
+          </article>
+          <article class="card">
+            <span class="card-icon" aria-hidden="true">◇</span>
+            <h3>بی‌طرف و شفاف</h3>
+            <p>هدف، ارائهٔ ارزیابی تحلیلی است؛ نه سرزنش یا داوری اخلاقی دربارهٔ افراد.</p>
+          </article>
+          <article class="card">
+            <span class="card-icon" aria-hidden="true">↗</span>
+            <h3>نتیجهٔ قابل فهم</h3>
+            <p>تحلیل همراه با توضیح ارائه می‌شود تا هر دو طرف بتوانند بهتر گفت‌وگو کنند.</p>
+          </article>
+        </div>
+      </section>
+
+      <aside class="notice shell">
+        <strong>دربارهٔ این صفحه:</strong>
+        این یک صفحهٔ معرفی است. اجرای امکانات تعاملی برنامه به سرویس‌های سمت سرور نیاز دارد
+        و در GitHub Pages میزبانی نمی‌شود. نتیجه‌های هوش مصنوعی ممکن است اشتباه باشند و
+        جایگزین مشاورهٔ حقوقی یا تخصصی نیستند.
+      </aside>
+    </main>
+
+    <footer class="shell">
+      آقای داور · ساخته‌شده برای گفت‌وگویی منصفانه‌تر
+    </footer>
+  </body>
+</html>
