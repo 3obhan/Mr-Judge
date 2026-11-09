@@ -2,9 +2,9 @@
  * Public settings for the app (nothing secret): which payment methods are switched on and the prices to show.
  * Works as POST { action: 'public' } (what the app does) and as a plain GET, so you can open  https://YOUR-SITE/api/config
  * in a browser to check your setup:
- *   { version, packCredits, freeCredits, prices: { usd, toman }, methods: { stripe, paypal, zarinpal, link }, linkUrl,
+ *   { version, packCredits, freeCredits, prices: { usd, toman }, methods: { stripe, paypal, zibal, link }, linkUrl,
  *     stripeMode: 'test' | 'live' | null, ready: { redis, gemini, email }, country }
- * `country` is the visitor's country (2 letters, from the hosting platform's header) or ''. The app uses it to offer ZarinPal
+ * `country` is the visitor's country (2 letters, from the hosting platform's header) or ''. The app uses it to offer zibal
  * to visitors in Iran whatever language they chose; every other method is offered to everybody in every language.
  */
 import { guard, PACK_CREDITS, PACK_PRICE_USD, PACK_PRICE_TOMAN, ANON_CREDITS } from './_lib/http.js';
