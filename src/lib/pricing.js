@@ -17,8 +17,8 @@ export function priceText(kind, config, lang) {
   return new Intl.NumberFormat(getLanguage(lang).locale, { style: 'currency', currency: 'USD' }).format(Number(config.prices.usd));
 }
 
-/** The price shown in big letters on the Credits page. Visitors in Iran / Persian readers see Toman when ZarinPal (or the Bazaar app) is available. */
+/** The price shown in big letters on the Credits page. Visitors in Iran / Persian readers see Toman when Zibal (or the Bazaar app) is available. */
 export function headlinePrice(config, lang, { bazaar = false } = {}) {
-  const toman = (lang === 'fa' || config?.country === 'IR') && (bazaar || config?.methods?.zarinpal);
+  const toman = (lang === 'fa' || config?.country === 'IR') && (bazaar || config?.methods?.zibal);
   return priceText(toman ? 'toman' : 'usd', config, lang);
 }
