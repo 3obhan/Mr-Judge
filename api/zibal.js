@@ -9,6 +9,11 @@
 import { cmd } from './_lib/redis.js';
 import { guard, body, originAllowed, PACK_CREDITS, PACK_PRICE_TOMAN } from './_lib/http.js';
 import { authUser, creditsKey, grantPurchase } from './_lib/auth.js';
+import { ProxyAgent } from 'undici'
+
+const proxyAgent = process.env.FIXIE_URL
+    ? new ProxyAgent(process.env.FIXIE_URL)
+    : underfined
 
 const merchant = () => process.env.ZIBAL_MERCHANT || '';
 const AMOUNT_RIAL = () => PACK_PRICE_TOMAN * 10; // زیبال ریال می‌گیرد
@@ -28,7 +33,8 @@ async function zibal(path, payload) {
   const r = await fetch(`${apiBase()}/v1/${path}`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
-    body: JSON.stringify({ merchant: merchant(), ...payload }),
+    body: JSON.stringify({ merchant: merchant(), ...payload }), 
+    dispatcher: proxyAgent,
   });
   return r.json().catch(() => ({}));
 }
