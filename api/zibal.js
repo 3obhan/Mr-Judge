@@ -22,8 +22,10 @@ const safeUrl = (req, u) => {
   }
 };
 
+const apiBase = () => process.env.ZIBAL_API_BASE || 'https://gateway.zibal.ir';
+
 async function zibal(path, payload) {
-  const r = await fetch(`https://gateway.zibal.ir/v1/${path}`, {
+  const r = await fetch(`${apiBase()}/v1/${path}`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
     body: JSON.stringify({ merchant: merchant(), ...payload }),

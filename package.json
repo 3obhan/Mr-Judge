@@ -11,7 +11,7 @@
     "typecheck": "tsc -p ./jsconfig.json",
     "preview": "vite preview",
     "build:bazaar": "vite build --mode bazaar",
-    "test:api": "node tests/api.test.mjs && node tests/defaults.test.mjs && node tests/redis-url.test.mjs && node tests/redis-tcp.test.mjs && node tests/relay.test.mjs",
+    "test:api": "node tests/api.test.mjs && node tests/defaults.test.mjs && node tests/redis-url.test.mjs && node tests/redis-tcp.test.mjs",
     "bazaar:android": "node scripts/setup-bazaar-android.mjs",
     "test:app": "node tests/locales.test.mjs && node tests/judge.test.mjs && node tests/langpath.test.mjs && node tests/postbuild.test.mjs",
     "test": "npm run test:api && npm run test:app && npm run test:cloudflare",

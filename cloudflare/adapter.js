@@ -12,7 +12,7 @@ const HANDLERS = {
   paypal: () => import('../api/paypal.js'),
   stripe: () => import('../api/stripe.js'),
   'stripe-webhook': () => import('../api/stripe-webhook.js'),
-  zarinpal: () => import('../api/zarinpal.js'),
+  zibal: () => import('../api/zibal.js'),
 };
 
 const jsonResponse = (obj, status) => new Response(JSON.stringify(obj), { status, headers: { 'Content-Type': 'application/json' } });

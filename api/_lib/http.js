@@ -45,7 +45,7 @@ export const today = () => new Date().toISOString().slice(0, 10);
 
 /** Pack size and price, in one place (the price text in the app is in src/lib/i18n.jsx: credits.offer / credits.price). */
 export const PACK_CREDITS = Number(process.env.PACK_CREDITS || 5);
-export const PACK_PRICE_TOMAN = Number(process.env.PACK_PRICE_TOMAN || 250000); // ZarinPal (Iran)
+export const PACK_PRICE_TOMAN = Number(process.env.PACK_PRICE_TOMAN || 250000); // Zibal (Iran)
 const usd = Number(process.env.PACK_PRICE_USD || 1);
 export const PACK_PRICE_USD = (Number.isFinite(usd) && usd >= 0.5 ? usd : 1).toFixed(2); // Stripe and PayPal; always 2 decimals ("5" becomes "5.00")
 /** Free analyses given when a NEW anonymous account is created (the first two are free). */

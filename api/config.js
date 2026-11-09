@@ -4,7 +4,7 @@
  * in a browser to check your setup:
  *   { version, packCredits, freeCredits, prices: { usd, toman }, methods: { stripe, paypal, zibal, link }, linkUrl,
  *     stripeMode: 'test' | 'live' | null, ready: { redis, gemini, email }, country }
- * `country` is the visitor's country (2 letters, from the hosting platform's header) or ''. The app uses it to offer zibal
+ * `country` is the visitor's country (2 letters, from the hosting platform's header) or ''. The app uses it to offer Zibal
  * to visitors in Iran whatever language they chose; every other method is offered to everybody in every language.
  */
 import { guard, PACK_CREDITS, PACK_PRICE_USD, PACK_PRICE_TOMAN, ANON_CREDITS } from './_lib/http.js';
@@ -22,8 +22,6 @@ export default async function handler(req, res) {
   const env = process.env;
   const country = String(req.headers['x-vercel-ip-country'] || req.headers['cf-ipcountry'] || '').toUpperCase();
   const key = env.STRIPE_SECRET_KEY || '';
-  const linkUrl = String(env.MANUAL_PAY_URL ?? DEFAULT_MANUAL_PAY_URL).trim();
-  const linkOn = /^https:\/\//.test(linkUrl) && String(env.ADMIN_SECRET || '').length >= 16; // only offered when you can approve payments
   res.setHeader('Cache-Control', 'no-store');
   return res.status(200).json({
     version: APP_VERSION,
