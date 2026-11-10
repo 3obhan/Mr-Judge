@@ -13,7 +13,7 @@ import { ProxyAgent } from 'undici'
 
 const proxyAgent = process.env.FIXIE_URL
     ? new ProxyAgent(process.env.FIXIE_URL)
-    : underfined
+    : undefined
 
 const merchant = () => process.env.ZIBAL_MERCHANT || '';
 const AMOUNT_RIAL = () => PACK_PRICE_TOMAN * 10; // زیبال ریال می‌گیرد
