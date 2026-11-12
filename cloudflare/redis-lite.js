@@ -1,7 +1,7 @@
 /**
  * The few Redis commands this app uses, on top of a key-value storage with async get / put / delete
  * (a Cloudflare Durable Object's storage). Pure JavaScript, so it is tested in Node (tests/redis-lite.test.mjs).
- * Supported: GET, SET (EX, NX), DEL, INCR, DECR, INCRBY, DECRBY, EXPIRE, SADD, SMEMBERS.
+ * Supported: GET, SET (EX, NX), DEL, INCR, DECR, INCRBY, DECRBY, EXPIRE, SADD, SREM, SMEMBERS.
  * Each value is stored as { v: <string | array>, e: <expiry in ms, 0 = never> }; expired values are removed when touched.
  */
 async function load(storage, key, now) {
@@ -59,6 +59,14 @@ export async function executeCommand(storage, args, now = Date.now()) {
       for (const m of rest) if (!set.includes(m)) { set.push(m); added += 1; }
       await storage.put(key, { v: set, e: cur?.e || 0 });
       return added;
+    }
+    case 'SREM': {
+      const cur = await load(storage, key, now);
+      if (!Array.isArray(cur?.v)) return 0;
+      const set = cur.v.filter((m) => !rest.includes(m));
+      const removed = cur.v.length - set.length;
+      if (removed) await storage.put(key, { v: set, e: cur.e || 0 });
+      return removed;
     }
     case 'SMEMBERS': {
       const cur = await load(storage, key, now);

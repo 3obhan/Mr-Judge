@@ -14,9 +14,6 @@ import { emailConfigured } from './_lib/email.js';
 
 export const APP_VERSION = 'global-4';
 
-// Payment link for visitors in Iran (confirmed by hand, see manualpay.js). Change it with the MANUAL_PAY_URL variable; set it to "off" to hide it.
-const DEFAULT_MANUAL_PAY_URL = 'https://variza.ir/pay/UrINperthQIgAAb3t2ZPS';
-
 export default async function handler(req, res) {
   if (guard(req, res, { needRedis: false, allowGet: true })) return;
   const env = process.env;

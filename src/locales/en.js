@@ -161,5 +161,18 @@ export default {
   "pdf.certified": "Certified by Mr Judge",
   "pdf.date": "Date",
   "pdf.mrJudge": "Mr Judge",
-  "pdf.score": "Score"
+  "pdf.score": "Score",
+  "credits.pay.link": "Payment link (Iran)",
+  "credits.link.step1": "1. Pay on the page that opens.",
+  "credits.link.open": "Open the payment page",
+  "credits.link.step2": "2. Then enter the tracking code from your receipt:",
+  "credits.link.placeholder": "Tracking code",
+  "credits.link.submit": "Send",
+  "credits.link.sent": "Received. Your credits will be added after we confirm the payment. Refresh this page later.",
+  "credits.link.dup": "This tracking code was already sent.",
+  "credits.link.bad": "Enter the tracking code from your payment receipt.",
+  "credits.link.tooMany": "Too many attempts today. Try again tomorrow.",
+  "voice.noDatabase": "The server's database is not set up yet. Ask the site owner to finish the setup.",
+  "voice.noAiKey": "The AI key is missing on the server. Ask the site owner to add it.",
+  "voice.tooLong": "The recording is too large. Record a shorter part and try again."
 };

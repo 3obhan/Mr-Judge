@@ -25,6 +25,9 @@ for (const [code, dir] of [['en', 'ltr'], ['fa', 'rtl'], ['ar', 'rtl'], ['tr', '
 assert.match(fs.readFileSync(path.join(dist, 'de/index.html'), 'utf8'), /<title>Herr Richter – Streitigkeiten mit intelligenter/, 'German title');
 assert.match(fs.readFileSync(path.join(dist, 'fa/index.html'), 'utf8'), /<title>آقای داور – /, 'Persian title (the brand name of the Persian locale)');
 assert.ok(!fs.existsSync(path.join(dist, 'sitemap.xml')));
+const redirects = fs.readFileSync(path.join(dist, '_redirects'), 'utf8').trim().split('\n');
+assert.equal(redirects.length, 8); assert.ok(redirects.includes('/de/* /de/index.html 200') && redirects.includes('/fa/* /fa/index.html 200'), 'Pages: every language page answers under its address');
+assert.deepEqual(JSON.parse(fs.readFileSync(path.join(dist, '_routes.json'), 'utf8')), { version: 1, include: ['/api/*'], exclude: [] }, 'Pages: only /api/* runs the Function');
 assert.match(fs.readFileSync(path.join(dist, 'index.html'), 'utf8'), /<noscript>[\s\S]*href="\/de\/">Deutsch<\/a>/, 'root page links every language');
 
 dist = run({ VITE_SITE_URL: 'https://example.com/' });

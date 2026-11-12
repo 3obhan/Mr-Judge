@@ -11,13 +11,13 @@
     "typecheck": "tsc -p ./jsconfig.json",
     "preview": "vite preview",
     "build:bazaar": "vite build --mode bazaar",
-    "test:api": "node tests/api.test.mjs && node tests/defaults.test.mjs && node tests/redis-url.test.mjs && node tests/redis-tcp.test.mjs",
+    "test:api": "node tests/api.test.mjs && node tests/defaults.test.mjs && node tests/redis-url.test.mjs && node tests/redis-tcp.test.mjs && node tests/relay.test.mjs",
     "bazaar:android": "node scripts/setup-bazaar-android.mjs",
-    "test:app": "node tests/locales.test.mjs && node tests/judge.test.mjs && node tests/langpath.test.mjs && node tests/postbuild.test.mjs",
+    "test:app": "node tests/locales.test.mjs && node tests/judge.test.mjs && node tests/langpath.test.mjs && node tests/postbuild.test.mjs && node tests/paymentmethods.test.mjs && node tests/voice.test.mjs",
     "test": "npm run test:api && npm run test:app && npm run test:cloudflare",
-    "cf:dev": "npm run build && wrangler dev",
-    "cf:deploy": "npm run build && wrangler deploy",
-    "test:cloudflare": "node tests/redis-lite.test.mjs && node tests/cloudflare.test.mjs"
+    "cf:dev": "npm run build && wrangler dev -c cloudflare/wrangler.worker.jsonc",
+    "cf:deploy": "npm run build && wrangler deploy -c cloudflare/wrangler.worker.jsonc",
+    "test:cloudflare": "node tests/redis-lite.test.mjs && node tests/redis-d1.test.mjs && node tests/cloudflare.test.mjs && node tests/cloudflare-pages.test.mjs"
   },
   "dependencies": {
     "@hello-pangea/dnd": "^17.0.0",
@@ -76,6 +76,7 @@
     "sonner": "^2.0.1",
     "tailwind-merge": "^3.0.2",
     "tailwindcss-animate": "^1.0.7",
+    "undici": "^6.29.1",
     "vaul": "^1.1.2",
     "zod": "^3.24.2"
   },

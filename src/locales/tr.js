@@ -161,5 +161,18 @@ export default {
   "pdf.certified": "Bay Yargıç tarafından onaylanmıştır",
   "pdf.date": "Tarih",
   "pdf.mrJudge": "Bay Yargıç",
-  "pdf.score": "Puan"
+  "pdf.score": "Puan",
+  "credits.pay.link": "Ödeme bağlantısı (İran)",
+  "credits.link.step1": "1. Açılan sayfada ödemeyi yapın.",
+  "credits.link.open": "Ödeme sayfasını aç",
+  "credits.link.step2": "2. Sonra makbuzunuzdaki takip kodunu girin:",
+  "credits.link.placeholder": "Takip kodu",
+  "credits.link.submit": "Gönder",
+  "credits.link.sent": "Alındı. Ödemeyi onayladıktan sonra kredileriniz eklenecek. Daha sonra sayfayı yenileyin.",
+  "credits.link.dup": "Bu takip kodu zaten gönderildi.",
+  "credits.link.bad": "Ödeme makbuzunuzdaki takip kodunu girin.",
+  "credits.link.tooMany": "Bugün çok fazla deneme yapıldı. Yarın tekrar deneyin.",
+  "voice.noDatabase": "Sunucunun veritabanı henüz kurulmadı. Site sahibinden kurulumu tamamlamasını isteyin.",
+  "voice.noAiKey": "Sunucuda yapay zekâ anahtarı eksik. Site sahibinden eklemesini isteyin.",
+  "voice.tooLong": "Kayıt çok büyük. Daha kısa bir bölüm kaydedip tekrar deneyin."
 };

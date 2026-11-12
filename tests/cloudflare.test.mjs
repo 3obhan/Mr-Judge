@@ -71,9 +71,9 @@ for (const [path, expected] of [['/de/Credits', '/de/'], ['/fa/History', '/fa/']
 }
 r = await call('/assets/missing.js', { method: 'GET' }); assert.equal(r.status, 404, 'a missing file is a 404, not the app');
 r = await call('/de/Credits', { method: 'POST' }); assert.equal(r.status, 405);
-const wrangler = JSON.parse((await import('node:fs')).readFileSync(new URL('../wrangler.jsonc', import.meta.url), 'utf8').replace(/^\s*\/\/.*$/gm, ''));
+const wrangler = JSON.parse((await import('node:fs')).readFileSync(new URL('../cloudflare/wrangler.worker.jsonc', import.meta.url), 'utf8').replace(/^\s*\/\/.*$/gm, ''));
 assert.deepEqual(wrangler.compatibility_flags, ['nodejs_compat']); assert.equal(wrangler.durable_objects.bindings[0].name, 'STORE'); assert.deepEqual(wrangler.assets.run_worker_first, ['/api/*']);
-assert.equal(wrangler.migrations[0].new_sqlite_classes[0], 'Store'); assert.equal(wrangler.main, 'cloudflare/worker.js');
+assert.equal(wrangler.migrations[0].new_sqlite_classes[0], 'Store'); assert.equal(wrangler.main, 'worker.js'); assert.equal(wrangler.assets.directory, '../dist');
 // the language list in the Worker matches the app's
 const src = (await import('node:fs')).readFileSync(new URL('../cloudflare/worker.js', import.meta.url), 'utf8');
 assert.equal(/LANG = \/\^\\\/\(([a-z|]+)\)/.exec(src)[1], LANGUAGES.map((l) => l.code).join('|'), 'Worker language list = locales');

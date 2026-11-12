@@ -9,10 +9,11 @@ const HANDLERS = {
   credits: () => import('../api/credits.js'),
   email: () => import('../api/email.js'),
   gemini: () => import('../api/gemini.js'),
+  manualpay: () => import('../api/manualpay.js'),
   paypal: () => import('../api/paypal.js'),
   stripe: () => import('../api/stripe.js'),
   'stripe-webhook': () => import('../api/stripe-webhook.js'),
-  zibal: () => import('../api/zibal.js'),
+  zarinpal: () => import('../api/zarinpal.js'),
 };
 
 const jsonResponse = (obj, status) => new Response(JSON.stringify(obj), { status, headers: { 'Content-Type': 'application/json' } });
@@ -25,7 +26,8 @@ export async function handleApi(request, env) {
 
   // The handlers read settings from process.env (as on Vercel): copy the Worker's variables and secrets there
   for (const [k, v] of Object.entries(env)) if (typeof v === 'string') process.env[k] = v;
-  if (env.STORE) globalThis.__REDIS_DO = env.STORE; // the built-in database (Durable Object)
+  if (env.DB) globalThis.__REDIS_D1 = env.DB; // the built-in database on Cloudflare Pages (D1)
+  if (env.STORE) globalThis.__REDIS_DO = env.STORE; // the built-in database on a Cloudflare Worker (Durable Object)
 
   const headers = {};
   request.headers.forEach((v, k) => { headers[k.toLowerCase()] = v; });

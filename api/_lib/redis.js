@@ -1,7 +1,8 @@
 /**
  * Redis access for the server (no npm package needed). Ways to configure it, in this order:
  *   1) UPSTASH_REDIS_REST_URL + UPSTASH_REDIS_REST_TOKEN   (or KV_REST_API_URL + KV_REST_API_TOKEN): Upstash REST API
- *   2) Cloudflare only: a Durable Object bound as "STORE" (cloudflare/store-do.js): the built-in storage, no account to create
+ *   2) Cloudflare only, no account to create: a D1 database bound as "DB" (Cloudflare Pages, api/_lib/redis-d1.js)
+ *      or a Durable Object bound as "STORE" (Cloudflare Worker, cloudflare/store-do.js)
  *   3) REDIS_URL (or KV_URL) that points to xxxx.upstash.io: converted to the Upstash REST address + token automatically
  *   4) REDIS_URL (or KV_URL) = redis://default:PASSWORD@host:port  or  rediss://... (TLS): any other Redis, over a direct
  *      connection (a small built-in client below)
@@ -13,6 +14,7 @@ export function redisConfig() {
   const url = process.env.UPSTASH_REDIS_REST_URL || process.env.KV_REST_API_URL || '';
   const token = process.env.UPSTASH_REDIS_REST_TOKEN || process.env.KV_REST_API_TOKEN || '';
   if (url && token) return { mode: 'rest', url, token };
+  if (globalThis.__REDIS_D1) return { mode: 'd1' };
   if (globalThis.__REDIS_DO) return { mode: 'do' };
   const conn = process.env.REDIS_URL || process.env.KV_URL || process.env.UPSTASH_REDIS_URL || '';
   try {
@@ -165,6 +167,10 @@ async function tcpCmd({ url }, args) {
 export async function cmd(...args) {
   const cfg = redisConfig();
   if (cfg.mode === 'rest') return restCmd(cfg, args);
+  if (cfg.mode === 'd1') {
+    const { executeCommandD1 } = await import('./redis-d1.js');
+    return executeCommandD1(globalThis.__REDIS_D1, args.map(String));
+  }
   if (cfg.mode === 'do') {
     const ns = globalThis.__REDIS_DO;
     return ns.get(ns.idFromName('main')).cmd(args.map(String));

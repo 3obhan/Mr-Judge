@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex,nofollow">
+<title>Payments to confirm</title>
+<style>
+  body{font-family:system-ui,Tahoma,sans-serif;max-width:760px;margin:0 auto;padding:24px;line-height:1.6;color:#222}
+  input{padding:8px 10px;border:1px solid #bbb;border-radius:8px;font-size:15px;width:280px;max-width:100%}
+  button{padding:8px 14px;border:0;border-radius:8px;font-size:14px;cursor:pointer;color:#fff;background:#0f766e;margin:2px}
+  button.no{background:#b91c1c} table{border-collapse:collapse;width:100%;margin-top:16px}
+  td,th{border-bottom:1px solid #ddd;padding:8px;text-align:start;vertical-align:middle;word-break:break-all}
+  #msg{margin-top:12px;color:#444} @media (prefers-color-scheme:dark){body{background:#111;color:#eee} td,th{border-color:#333} input{background:#222;color:#eee;border-color:#555}}
+</style>
+</head>
+<body>
+<h1>Payments to confirm</h1>
+<p>Visitors pay on your payment link, then send the <b>tracking code</b> of the receipt. Find that code in your payment panel (amount and status must match). <b>Approve</b> adds the credits; <b>Reject</b> deletes the request (the visitor can send the right code again).</p>
+<p><input id="secret" type="password" placeholder="ADMIN_SECRET" autocomplete="off"> <button id="load">Load</button></p>
+<div id="msg"></div>
+<table id="table" hidden><thead><tr><th>Tracking code</th><th>Time</th><th>Account</th><th></th></tr></thead><tbody id="rows"></tbody></table>
+<script>
+const $ = (id) => document.getElementById(id);
+async function api(body) {
+  const r = await fetch('/api/manualpay', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + $('secret').value.trim() }, body: JSON.stringify(body) });
+  const j = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(j.error || ('HTTP ' + r.status));
+  return j;
+}
+function cell(text) { const td = document.createElement('td'); td.textContent = text; return td; } // textContent: a visitor's text can never run as code
+async function load() {
+  $('msg').textContent = 'Loading...';
+  try {
+    const { items, packCredits } = await api({ action: 'list' });
+    const rows = $('rows'); rows.replaceChildren();
+    for (const it of items) {
+      const tr = document.createElement('tr');
+      tr.append(cell(it.reference), cell(new Date(it.ts).toLocaleString()), cell(it.account));
+      const td = document.createElement('td');
+      for (const [label, action, cls] of [['Approve (+' + packCredits + ')', 'approve', ''], ['Reject', 'reject', 'no']]) {
+        const b = document.createElement('button'); b.textContent = label; if (cls) b.className = cls;
+        b.onclick = async () => { b.disabled = true; try { await api({ action, id: it.id }); await load(); } catch (e) { $('msg').textContent = 'Error: ' + e.message; b.disabled = false; } };
+        td.append(b);
+      }
+      tr.append(td); rows.append(tr);
+    }
+    $('table').hidden = !items.length; $('msg').textContent = items.length ? items.length + ' waiting' : 'Nothing waiting.';
+  } catch (e) { $('table').hidden = true; $('msg').textContent = 'Error: ' + e.message + (e.message === 'ADMIN_NOT_CONFIGURED' ? ' (set ADMIN_SECRET on the server)' : ''); }
+}
+$('load').onclick = load; $('secret').addEventListener('keydown', (e) => { if (e.key === 'Enter') load(); });
+</script>
+</body>
+</html>

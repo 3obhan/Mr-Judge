@@ -161,5 +161,18 @@ export default {
   "pdf.certified": "Beglaubigt von Herr Richter",
   "pdf.date": "Datum",
   "pdf.mrJudge": "Herr Richter",
-  "pdf.score": "Punkte"
+  "pdf.score": "Punkte",
+  "credits.pay.link": "Zahlungslink (Iran)",
+  "credits.link.step1": "1. Bezahle auf der Seite, die sich öffnet.",
+  "credits.link.open": "Zahlungsseite öffnen",
+  "credits.link.step2": "2. Gib dann den Verfolgungscode von deinem Beleg ein:",
+  "credits.link.placeholder": "Verfolgungscode",
+  "credits.link.submit": "Senden",
+  "credits.link.sent": "Erhalten. Dein Guthaben wird nach der Bestätigung der Zahlung hinzugefügt. Lade die Seite später neu.",
+  "credits.link.dup": "Dieser Verfolgungscode wurde bereits gesendet.",
+  "credits.link.bad": "Gib den Verfolgungscode von deinem Zahlungsbeleg ein.",
+  "credits.link.tooMany": "Heute zu viele Versuche. Versuche es morgen erneut.",
+  "voice.noDatabase": "Die Datenbank des Servers ist noch nicht eingerichtet. Bitte den Betreiber der Seite, die Einrichtung abzuschließen.",
+  "voice.noAiKey": "Auf dem Server fehlt der KI-Schlüssel. Bitte den Betreiber der Seite, ihn hinzuzufügen.",
+  "voice.tooLong": "Die Aufnahme ist zu groß. Nimm einen kürzeren Teil auf und versuche es erneut."
 };

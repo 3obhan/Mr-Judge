@@ -161,5 +161,18 @@ export default {
   "pdf.certified": "Certificado por el Señor Juez",
   "pdf.date": "Fecha",
   "pdf.mrJudge": "Señor Juez",
-  "pdf.score": "Puntuación"
+  "pdf.score": "Puntuación",
+  "credits.pay.link": "Enlace de pago (Irán)",
+  "credits.link.step1": "1. Paga en la página que se abre.",
+  "credits.link.open": "Abrir la página de pago",
+  "credits.link.step2": "2. Después introduce el código de seguimiento de tu recibo:",
+  "credits.link.placeholder": "Código de seguimiento",
+  "credits.link.submit": "Enviar",
+  "credits.link.sent": "Recibido. Tus créditos se añadirán cuando confirmemos el pago. Actualiza la página más tarde.",
+  "credits.link.dup": "Este código de seguimiento ya se envió.",
+  "credits.link.bad": "Introduce el código de seguimiento de tu recibo de pago.",
+  "credits.link.tooMany": "Demasiados intentos hoy. Inténtalo mañana.",
+  "voice.noDatabase": "La base de datos del servidor aún no está configurada. Pide al propietario del sitio que termine la configuración.",
+  "voice.noAiKey": "Falta la clave de IA en el servidor. Pide al propietario del sitio que la añada.",
+  "voice.tooLong": "La grabación es demasiado grande. Graba una parte más corta e inténtalo de nuevo."
 };

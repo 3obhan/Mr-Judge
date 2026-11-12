@@ -1,4 +1,4 @@
-// End-to-end test of the API handlers with mock Upstash / Brevo / Zibal / Bazaar / Gemini servers.
+x// End-to-end test of the API handlers with mock Upstash / Brevo / ZarinPal / Bazaar / Gemini servers.
 // Run: npm run test:api
 import http from 'node:http';
 import { createHash, createHmac } from 'node:crypto';
@@ -19,6 +19,7 @@ const upstash = http.createServer((req, res) => {
       case 'INCRBY': { const v = Number(store.get(a[0]) ?? 0) + Number(a[1]); store.set(a[0], String(v)); r = v; break; }
       case 'EXPIRE': r = 1; break;
       case 'SADD': { const s = store.get(a[0]) || new Set(); s.add(a[1]); store.set(a[0], s); r = 1; break; }
+      case 'SREM': { const st = store.get(a[0]); r = st && st.delete(a[1]) ? 1 : 0; break; }
       case 'SMEMBERS': r = [...(store.get(a[0]) || [])]; break;
       default: res.statusCode = 400; return res.end(JSON.stringify({ error: 'unsupported ' + c }));
     }
@@ -26,7 +27,7 @@ const upstash = http.createServer((req, res) => {
   });
 });
 
-const zibalPayments = new Map(); const paypalOrders = new Map(); const stripeSessions = new Map(); let lastStripeCreate = null;
+const zpPayments = new Map(); const zbPayments = new Map(); let lastZibalBody = null; let lastZibalHeaders = null; let lastZarinpalHeaders = null; let lastZarinpalBody = ''; const paypalOrders = new Map(); const stripeSessions = new Map(); let lastStripeCreate = null;
 const sent = []; let emailProviderDown = false; let geminiMode = 'ok'; let geminiCalls = 0; const groqCalls = [];
 const ext = http.createServer((req, res) => {
   let d = ''; req.on('data', (c) => (d += c)); req.on('end', () => {
@@ -60,23 +61,34 @@ const ext = http.createServer((req, res) => {
     }
     m = /^\/v1\/checkout\/sessions\/(cs_\w+)$/.exec(u);
     if (m) { if (req.headers.authorization !== 'Bearer sk_test_x') return send(401, {}); const x = stripeSessions.get(m[1]); return x ? send(200, x) : send(404, { error: { message: 'No such session' } }); }
-    // ---------- Zibal ----------
-    if (u === '/v1/request') {
-      const o = JSON.parse(d);
-      if (o.merchant !== 'zibal-merchant-test' || o.amount !== 2500000 || !o.callbackUrl) {
-        return send(200, { result: 102, message: 'merchant not found' });
+    { // Zibal (also reachable under /zibal/..., like behind our relay)
+      const uz = u.startsWith('/zibal/') ? u.slice(6) : u;
+      if (uz === '/v1/request' && req.method === 'POST') {
+        const o = JSON.parse(d); lastZibalBody = d; lastZibalHeaders = req.headers;
+        if (o.merchant !== 'zibal-merchant-1' || o.amount !== 2500000 || !o.callbackUrl) return send(200, { result: 102, message: 'merchant not found' });
+        const id = 900000 + zbPayments.size + 1; zbPayments.set(String(id), { paid: false, verified: false, orderId: o.orderId, amount: o.amount });
+        return send(200, { trackId: id, result: 100, message: 'success' });
       }
-      const trackId = 100000 + zibalPayments.size + 1;
-      zibalPayments.set(String(trackId), { paid: false, verified: false });
-      return send(200, { result: 100, message: 'success', trackId });
+      if (uz === '/v1/verify' && req.method === 'POST') {
+        const o = JSON.parse(d); const p = zbPayments.get(String(o.trackId));
+        if (o.merchant !== 'zibal-merchant-1' || !p) return send(200, { result: 203, message: 'trackId invalid' });
+        if (!p.paid) return send(200, { result: 202, message: 'not paid' });
+        const result = p.verified ? 201 : 100; p.verified = true;
+        return send(200, { result, status: 1, amount: p.amount, orderId: p.orderId, refNumber: 555, paidAt: '2026-11-07T10:00:00' });
+      }
     }
-    if (u === '/v1/verify') {
+    if (u === '/pg/v4/payment/request.json') { // ZarinPal
+      lastZarinpalHeaders = req.headers; lastZarinpalBody = d;
       const o = JSON.parse(d);
-      const p = zibalPayments.get(String(o.trackId));
-      if (!p || !p.paid) return send(200, { result: 202, message: 'not paid' });
-      if (p.verified) return send(200, { result: 201, message: 'already verified', refNumber: 123456789, cardNumber: '621986******4212', status: 1, amount: 2500000 });
-      p.verified = true;
-      return send(200, { result: 100, message: 'verified', refNumber: 123456789, cardNumber: '621986******4212', status: 1, amount: 2500000 });
+      if (o.merchant_id !== 'zp-merchant-0000-0000-0000-000000000000' || o.amount !== 2500000 || !o.callback_url) return send(200, { data: [], errors: { code: -9 } });
+      const id = 'A' + String(zpPayments.size + 1).padStart(35, '0'); zpPayments.set(id, { paid: false, verified: false });
+      return send(200, { data: { code: 100, message: 'Success', authority: id, fee_type: 'Merchant', fee: 0 }, errors: [] });
+    }
+    if (u === '/pg/v4/payment/verify.json') {
+      const o = JSON.parse(d); const p = zpPayments.get(o.authority);
+      if (!p || !p.paid || o.amount !== 2500000 || o.merchant_id !== 'zp-merchant-0000-0000-0000-000000000000') return send(200, { data: [], errors: { code: -53 } });
+      const code = p.verified ? 101 : 100; p.verified = true;
+      return send(200, { data: { code, message: 'Verified', ref_id: 12345, card_pan: '621986******4212' }, errors: [] });
     }
     if (u === '/devapi/v2/auth/token/') { // Bazaar
       const p = new URLSearchParams(d);
@@ -110,7 +122,8 @@ Object.assign(process.env, {
   UPSTASH_REDIS_REST_URL: `http://127.0.0.1:${upstash.address().port}`, UPSTASH_REDIS_REST_TOKEN: 'tok',
   PAYPAL_CLIENT_ID: 'cid', PAYPAL_CLIENT_SECRET: 'sec', PAYPAL_API_BASE: EXT,
   STRIPE_SECRET_KEY: 'sk_test_x', STRIPE_API_BASE: EXT, STRIPE_WEBHOOK_SECRET: 'whsec_test_123',
-  ZIBAL_MERCHANT: 'zibal-merchant-test', ZIBAL_API_BASE: EXT,
+  ZIBAL_MERCHANT: 'zibal-merchant-1', ZIBAL_API_BASE: EXT,
+  ZARINPAL_MERCHANT_ID: 'zp-merchant-0000-0000-0000-000000000000', ZARINPAL_API_BASE: EXT, ZARINPAL_PAY_BASE: 'https://pay.test',
   BAZAAR_API_BASE: EXT, BAZAAR_CLIENT_ID: 'cid', BAZAAR_CLIENT_SECRET: 'csec', BAZAAR_REFRESH_TOKEN: 'rt', BAZAAR_PACKAGE_NAME: 'com.test.judge',
   ANON_CREDITS: '0', FREE_CREDITS: '2', // the test checks the email/free-credit mechanism; the real defaults are checked in defaults.test.mjs
   FALLBACK_API_KEY: 'fb-key', FALLBACK_BASE_URL: `${EXT}/openai/v1`, FALLBACK_STT: '1',
@@ -120,7 +133,7 @@ Object.assign(process.env, {
 });
 
 const mods = {};
-for (const n of ['account', 'credits', 'zibal', 'bazaar', 'email', 'gemini', 'paypal', 'stripe', 'stripe-webhook', 'config']) mods[n] = (await import(new URL(`../api/${n}.js`, import.meta.url))).default;
+for (const n of ['account', 'credits', 'zarinpal', 'zibal', 'bazaar', 'email', 'gemini', 'paypal', 'stripe', 'stripe-webhook', 'config', 'manualpay']) mods[n] = (await import(new URL(`../api/${n}.js`, import.meta.url))).default;
 
 async function call(name, payload, { key, origin, method = 'POST', ip = '1.1.1.1', raw, headers = {} } = {}) {
   const req = { method, headers: { host: 'site.test', origin, authorization: key ? `Bearer ${key}` : undefined, 'x-forwarded-for': ip, ...headers }, body: payload };
@@ -224,7 +237,7 @@ console.log('ok credits+gemini');
 
 // ---------- backup AI (Groq / Grok) ----------
 const fbKey = await anon(); await verifyEmail(fbKey, 'backup@x.test');
-const gem = (extra = {}) => ({ model: 'gemini-3.8-flash', body: { contents: [{ role: 'user', parts: [{ text: 'judge this' }] }], generationConfig: { responseMimeType: 'application/json', responseSchema: { type: 'OBJECT', properties: { from: { type: 'STRING', description: 'who answered' } } } }, ...extra });
+const gem = (extra = {}) => ({ model: 'gemini-3.8-flash', body: { contents: [{ role: 'user', parts: [{ text: 'judge this' }] }], generationConfig: { responseMimeType: 'application/json', responseSchema: { type: 'OBJECT', properties: { from: { type: 'STRING', description: 'who answered' } } } } }, ...extra });
 let tk = (await call('credits', { action: 'spend' }, { key: fbKey })).body.ticket;
 geminiMode = '429'; groqCalls.length = 0;
 r = await call('gemini', gem({ ticket: tk }), { key: fbKey });
@@ -257,42 +270,68 @@ console.log('ok backup AI');
 for (let i = 0; i < 25; i += 1) r = await call('account', { action: 'create' }, { ip: '9.9.9.9' });
 assert.equal(r.status, 429); console.log('ok rate limit');
 
-// ---------- Zibal ----------
-r = await call('zibal', { action: 'create', callbackUrl: 'https://evil.test/x' }, { key }); assert.equal(r.status, 400, 'open redirect blocked');
-process.env.ZIBAL_MERCHANT = 'wrong-merchant';
-r = await call('zibal', { action: 'create', callbackUrl: 'https://site.test/?zb=1' }, { key }); assert.equal(r.status, 502); assert.equal(r.body.zibalResult, 102, 'the gateway error code is passed on');
-process.env.ZIBAL_MERCHANT = 'zibal-merchant-test';
-r = await call('zibal', { action: 'create', callbackUrl: 'https://site.test/?zb=1' }, { key }); assert.equal(r.status, 200);
-const trackId = r.body.trackId;
-assert.equal(r.body.payUrl, `https://gateway.zibal.ir/start/${trackId}`);
-r = await call('zibal', { action: 'verify', trackId }, { key: other }); assert.equal(r.status, 404, "other account can't redeem my payment");
+// ---------- ZarinPal (Shetab gateway) ----------
+r = await call('zarinpal', { action: 'create', callbackUrl: 'https://evil.test/x' }, { key }); assert.equal(r.status, 400, 'open redirect blocked');
+process.env.ZARINPAL_MERCHANT_ID = 'wrong-merchant';
+r = await call('zarinpal', { action: 'create', callbackUrl: 'https://site.test/?zp=1' }, { key }); assert.equal(r.status, 502); assert.equal(r.body.zarinpalCode, -9, 'the gateway error code is passed on');
+process.env.ZARINPAL_MERCHANT_ID = 'zp-merchant-0000-0000-0000-000000000000';
+r = await call('zarinpal', { action: 'create', callbackUrl: 'https://site.test/?zp=1' }, { key }); assert.equal(r.status, 200); const au = r.body.authority; assert.equal(r.body.payUrl, 'https://pay.test/pg/StartPay/' + au);
+r = await call('zarinpal', { action: 'verify', authority: au }, { key: other }); assert.equal(r.status, 404, "other account can't redeem my payment");
 const b0 = await credits(key);
-r = await call('zibal', { action: 'verify', trackId }, { key }); assert.equal(r.status, 402, 'unpaid -> no credits'); assert.equal(r.body.zibalResult, 202); assert.equal(await credits(key), b0);
-zibalPayments.get(String(trackId)).paid = true;
-r = await call('zibal', { action: 'verify', trackId }, { key }); assert.equal(r.status, 200); assert.equal(r.body.granted, true); assert.equal(r.body.credits, b0 + 5); assert.equal(r.body.refNumber, 123456789);
-r = await call('zibal', { action: 'verify', trackId }, { key }); assert.equal(r.body.granted, false); assert.equal(r.body.credits, b0 + 5, 'second verify gives nothing');
+r = await call('zarinpal', { action: 'verify', authority: au }, { key }); assert.equal(r.status, 402, 'unpaid -> no credits'); assert.equal(r.body.zarinpalCode, -53); assert.equal(await credits(key), b0);
+zpPayments.get(au).paid = true;
+r = await call('zarinpal', { action: 'verify', authority: au }, { key }); assert.equal(r.status, 200); assert.equal(r.body.granted, true); assert.equal(r.body.credits, b0 + 5);
+r = await call('zarinpal', { action: 'verify', authority: au }, { key }); assert.equal(r.body.granted, false); assert.equal(r.body.credits, b0 + 5, 'second verify gives nothing');
 assert.equal(Number(store.get([...store.keys()].find((k) => k.endsWith(':bought')) )) >= 0, true);
-// already verified at gateway (result 201) still grants once
-const trackId2 = (await call('zibal', { action: 'create', callbackUrl: 'https://site.test/' }, { key })).body.trackId;
-zibalPayments.get(String(trackId2)).paid = true; zibalPayments.get(String(trackId2)).verified = true;
-r = await call('zibal', { action: 'verify', trackId: trackId2 }, { key }); assert.equal(r.body.granted, true, '201 (already verified at the gateway) still counts once');
-r = await call('zibal', { action: 'verify', trackId: trackId2 }, { key }); assert.equal(r.body.granted, false);
-r = await call('zibal', { action: 'verify', trackId: '' }, { key }); assert.equal(r.status, 400);
-r = await call('zibal', { action: 'verify' }, { key }); assert.equal(r.status, 400);
-console.log('ok zibal');
+// a retry after a crash: gateway already says 101, flag was cleared, credits still granted only once
+const au2 = (await call('zarinpal', { action: 'create', callbackUrl: 'https://site.test/' }, { key })).body.authority; zpPayments.get(au2).paid = true; zpPayments.get(au2).verified = true;
+r = await call('zarinpal', { action: 'verify', authority: au2 }, { key }); assert.equal(r.body.granted, true, '101 (already verified at the gateway) still counts once');
+r = await call('zarinpal', { action: 'verify', authority: au2 }, { key }); assert.equal(r.body.granted, false);
+r = await call('zarinpal', { action: 'verify', authority: 'bad' }, { key }); assert.equal(r.status, 400);
+// through the relay: the call carries a signature the relay can check
+process.env.ZARINPAL_RELAY_SECRET = 'relay-secret-1234567890';
+r = await call('zarinpal', { action: 'create', callbackUrl: 'https://site.test/?zp=1' }, { key }); assert.equal(r.status, 200);
+const ts = lastZarinpalHeaders['x-relay-ts'];
+assert.equal(lastZarinpalHeaders['x-relay-sig'], createHmac('sha256', 'relay-secret-1234567890').update(`${ts}.${'/pg/v4/payment/request.json'}.${lastZarinpalBody}`).digest('hex'), 'the relay can verify the signature');
+delete process.env.ZARINPAL_RELAY_SECRET;
+r = await call('zarinpal', { action: 'create', callbackUrl: 'https://site.test/?zp=1' }, { key }); assert.equal(lastZarinpalHeaders['x-relay-sig'], undefined, 'no relay -> no signature headers');
+console.log('ok zarinpal');
 
 // ---------- public config ----------
 r = await call('config', { action: 'public' }); assert.equal(r.status, 200);
-assert.deepEqual(r.body.methods, { stripe: true, paypal: true, zibal: true }); assert.deepEqual(r.body.prices, { usd: '1.00', toman: 250000 }); assert.equal(r.body.packCredits, 5);
+assert.deepEqual(r.body.methods, { stripe: true, paypal: true, zarinpal: true, zibal: true, link: false }, 'the payment link needs ADMIN_SECRET'); assert.equal(r.body.linkUrl, ''); assert.deepEqual(r.body.prices, { usd: '1.00', toman: 250000 }); assert.equal(r.body.packCredits, 5);
 r = await call('config', { action: 'public' }, { headers: { 'x-vercel-ip-country': 'ir' } }); assert.equal(r.body.country, 'IR', 'country from the hosting header');
 r = await call('config', { action: 'public' }, { headers: { 'x-vercel-ip-country': 'nonsense' } }); assert.equal(r.body.country, '');
 r = await call('config', { action: 'public' }, { headers: { 'cf-ipcountry': 'DE' } }); assert.equal(r.body.country, 'DE', 'Cloudflare header works too');
-r = await call('config', {}, { method: 'GET' }); assert.equal(r.status, 200, 'GET works: open /api/config in a browser'); assert.equal(r.body.version, 'global-3'); assert.equal(r.body.stripeMode, 'test'); assert.deepEqual(r.body.ready, { redis: true, gemini: true, email: true });
+r = await call('config', {}, { method: 'GET' }); assert.equal(r.status, 200, 'GET works: open /api/config in a browser'); assert.equal(r.body.version, 'global-5'); assert.equal(r.body.stripeMode, 'test'); assert.deepEqual(r.body.ready, { redis: true, gemini: true, email: true });
 assert.equal(r.headers['Cache-Control'], 'no-store');
 const savedKey = process.env.STRIPE_SECRET_KEY; delete process.env.STRIPE_SECRET_KEY; r = await call('config', {}, { method: 'GET' }); assert.equal(r.body.methods.stripe, false); assert.equal(r.body.stripeMode, null); process.env.STRIPE_SECRET_KEY = savedKey;
 process.env.STRIPE_SECRET_KEY = 'sk_live_abc'; r = await call('config', {}, { method: 'GET' }); assert.equal(r.body.stripeMode, 'live'); process.env.STRIPE_SECRET_KEY = savedKey;
 r = await call('stripe', {}, { method: 'GET', key }); assert.equal(r.status, 405, 'only /api/config answers GET');
 console.log('ok config');
+
+// ---------- Zibal (Shetab gateway) ----------
+r = await call('zibal', { action: 'create', callbackUrl: 'https://evil.test/x' }, { key }); assert.equal(r.status, 400, 'open redirect blocked');
+process.env.ZIBAL_MERCHANT = 'wrong'; r = await call('zibal', { action: 'create', callbackUrl: 'https://site.test/?zb=1' }, { key }); assert.equal(r.status, 502); assert.equal(r.body.zibalCode, 102, "the gateway's result code is passed on (115 would mean: IP not registered)"); process.env.ZIBAL_MERCHANT = 'zibal-merchant-1';
+r = await call('zibal', { action: 'create', callbackUrl: 'https://site.test/?zb=1' }, { key }); assert.equal(r.status, 200); const tid = r.body.trackId; assert.equal(r.body.payUrl, `https://gateway.zibal.io/start/${tid}`);
+assert.equal(JSON.parse(lastZibalBody).amount, 2500000, 'the price is set by the server, in Rial'); assert.match(JSON.parse(lastZibalBody).orderId, /^[a-f0-9]{16}$/); assert.equal(lastZibalHeaders['x-relay-sig'], undefined, 'no relay -> no signature');
+r = await call('zibal', { action: 'verify', trackId: 'abc' }, { key }); assert.equal(r.status, 400); r = await call('zibal', { action: 'verify', trackId: tid }, { key: other }); assert.equal(r.status, 404, "another account cannot redeem my payment");
+const zb0 = await credits(key);
+r = await call('zibal', { action: 'verify', trackId: tid }, { key }); assert.equal(r.status, 402, 'unpaid -> no credits'); assert.equal(r.body.zibalCode, 202); assert.equal(await credits(key), zb0);
+zbPayments.get(tid).paid = true;
+r = await call('zibal', { action: 'verify', trackId: tid }, { key }); assert.equal(r.status, 200); assert.equal(r.body.granted, true); assert.equal(r.body.credits, zb0 + 5); assert.equal(r.body.refNumber, 555);
+r = await call('zibal', { action: 'verify', trackId: tid }, { key }); assert.equal(r.body.granted, false, 'second verify gives nothing'); assert.equal(await credits(key), zb0 + 5);
+const newZb = async () => (await call('zibal', { action: 'create', callbackUrl: 'https://site.test/' }, { key })).body.trackId;
+const zt2 = await newZb(); Object.assign(zbPayments.get(zt2), { paid: true, verified: true }); // already verified at the gateway (a retry after a crash)
+r = await call('zibal', { action: 'verify', trackId: zt2 }, { key }); assert.equal(r.body.granted, true, 'result 201 still counts, once'); r = await call('zibal', { action: 'verify', trackId: zt2 }, { key }); assert.equal(r.body.granted, false);
+const zt3 = await newZb(); Object.assign(zbPayments.get(zt3), { paid: true, amount: 1000 }); r = await call('zibal', { action: 'verify', trackId: zt3 }, { key }); assert.equal(r.status, 402, 'a different amount is refused');
+const zt4 = await newZb(); Object.assign(zbPayments.get(zt4), { paid: true, orderId: 'someone-elses-order' }); r = await call('zibal', { action: 'verify', trackId: zt4 }, { key }); assert.equal(r.status, 402, 'a different order is refused');
+// through our relay: the call is signed for the relay (path with the /zibal prefix)
+process.env.ZIBAL_API_BASE = `${EXT}/zibal`; process.env.ZIBAL_RELAY_SECRET = 'relay-secret-1234567890';
+r = await call('zibal', { action: 'create', callbackUrl: 'https://site.test/?zb=1' }, { key }); assert.equal(r.status, 200);
+assert.equal(lastZibalHeaders['x-relay-sig'], createHmac('sha256', 'relay-secret-1234567890').update(`${lastZibalHeaders['x-relay-ts']}./zibal/v1/request.${lastZibalBody}`).digest('hex'), 'the relay can verify the signature');
+process.env.ZIBAL_API_BASE = EXT; delete process.env.ZIBAL_RELAY_SECRET;
+console.log('ok zibal');
 
 // ---------- PayPal ----------
 r = await call('paypal', { action: 'create', returnUrl: 'https://evil.test/x', cancelUrl: 'https://site.test/' }, { key }); assert.equal(r.status, 400, 'open redirect blocked');
@@ -343,6 +382,47 @@ raw = evt(stripeSessions.get(sidLow)); r = await call('stripe-webhook', undefine
 raw = evt({ id: 'x' }, 'customer.created'); r = await call('stripe-webhook', undefined, { raw, headers: { 'stripe-signature': sign(raw) } }); assert.equal(r.body.ignored, true);
 void uidOf;
 console.log('ok stripe');
+
+// ---------- payment link, confirmed by hand ----------
+const adminHeaders = (secret) => ({ authorization: `Bearer ${secret}` });
+r = await call('config', { action: 'public' }); assert.equal(r.body.methods.link, false, 'hidden until you can approve payments (ADMIN_SECRET)');
+process.env.ADMIN_SECRET = 'admin-secret-1234567890';
+r = await call('config', { action: 'public' }); assert.equal(r.body.methods.link, false, 'no MANUAL_PAY_URL: the payment link is off, nothing is preset');
+process.env.MANUAL_PAY_URL = 'https://pay.example.test/p/1'; r = await call('config', { action: 'public' }); assert.equal(r.body.methods.link, true); assert.equal(r.body.linkUrl, 'https://pay.example.test/p/1');
+process.env.MANUAL_PAY_URL = 'http://not-https.test'; r = await call('config', { action: 'public' }); assert.equal(r.body.methods.link, false, 'only https links'); process.env.MANUAL_PAY_URL = 'off'; r = await call('config', { action: 'public' }); assert.equal(r.body.methods.link, false); process.env.MANUAL_PAY_URL = 'https://pay.example.test/p/1';
+const mp = await anon(); const mpUid = store.get('k:' + createHash('sha256').update(mp.replace(/-/g, '')).digest('hex')); const mpBefore = await credits(mp);
+r = await call('manualpay', { action: 'submit', reference: 'ab' }, { key: mp }); assert.equal(r.status, 400, 'too short');
+r = await call('manualpay', { action: 'submit', reference: '<script>x</script>' }, { key: mp }); assert.equal(r.status, 400, 'odd characters refused');
+r = await call('manualpay', { action: 'submit', reference: 'TRK 12345-67' }); assert.equal(r.status, 401, 'needs an account');
+r = await call('manualpay', { action: 'submit', reference: 'TRK 12345-67' }, { key: mp }); assert.equal(r.status, 200);
+r = await call('manualpay', { action: 'submit', reference: 'trk12345-67' }, { key: await anon() }); assert.equal(r.status, 409, 'the same code (any spelling) cannot be sent twice, even by another account');
+assert.equal(await credits(mp), mpBefore, 'nothing is added before you approve');
+// admin
+r = await call('manualpay', { action: 'list' }); assert.equal(r.status, 401);
+r = await call('manualpay', { action: 'list' }, { headers: adminHeaders('wrong-secret-0000000000') }); assert.equal(r.status, 401);
+r = await call('manualpay', { action: 'list' }, { key: mp }); assert.equal(r.status, 401, 'an account key is not an admin secret');
+r = await call('manualpay', { action: 'list' }, { headers: adminHeaders('admin-secret-1234567890') }); assert.equal(r.status, 200); assert.equal(r.body.items.length, 1);
+const it = r.body.items[0]; assert.equal(it.reference, 'TRK 12345-67'); assert.equal(it.account, mpUid.slice(0, 8), 'only the start of the account id is shown'); assert.equal(r.body.packCredits, 5);
+r = await call('manualpay', { action: 'approve', id: 'not-an-id' }, { headers: adminHeaders('admin-secret-1234567890') }); assert.equal(r.status, 404);
+r = await call('manualpay', { action: 'approve', id: it.id }, { headers: adminHeaders('admin-secret-1234567890') }); assert.equal(r.status, 200); assert.equal(r.body.credits, mpBefore + 5);
+r = await call('manualpay', { action: 'approve', id: it.id }, { headers: adminHeaders('admin-secret-1234567890') }); assert.equal(r.status, 404, 'approving twice gives nothing');
+assert.equal(await credits(mp), mpBefore + 5);
+r = await call('manualpay', { action: 'submit', reference: 'TRK 12345-67' }, { key: mp }); assert.equal(r.status, 409, 'an approved code can never be used again');
+// reject: the visitor can try again with the right code
+r = await call('manualpay', { action: 'submit', reference: 'REJ-0001' }, { key: mp }); assert.equal(r.status, 200);
+const rej = (await call('manualpay', { action: 'list' }, { headers: adminHeaders('admin-secret-1234567890') })).body.items[0];
+r = await call('manualpay', { action: 'reject', id: rej.id }, { headers: adminHeaders('admin-secret-1234567890') }); assert.equal(r.status, 200);
+assert.equal((await call('manualpay', { action: 'list' }, { headers: adminHeaders('admin-secret-1234567890') })).body.items.length, 0);
+r = await call('manualpay', { action: 'submit', reference: 'REJ-0001' }, { key: mp }); assert.equal(r.status, 200, 'resubmitting after a rejection works');
+// limits
+for (const c of ['LIM-0001', 'LIM-0002']) await call('manualpay', { action: 'submit', reference: c }, { key: mp });
+r = await call('manualpay', { action: 'submit', reference: 'LIM-0003' }, { key: mp }); assert.equal(r.status, 429, 'at most 5 tries a day per account');
+for (let i = 0; i < 10; i += 1) await call('manualpay', { action: 'list' }, { ip: '7.7.7.7', headers: adminHeaders(`wrong-secret-${i}-xxxxxxxx`) });
+r = await call('manualpay', { action: 'list' }, { ip: '7.7.7.7', headers: adminHeaders('admin-secret-1234567890') }); assert.equal(r.status, 200, 'the failed tries so far (10) are still within the allowance');
+r = await call('manualpay', { action: 'list' }, { ip: '7.7.7.7', headers: adminHeaders('wrong-secret-last-xxxxxx') }); r = await call('manualpay', { action: 'list' }, { ip: '7.7.7.7', headers: adminHeaders('wrong-secret-last2-xxxxx') }); assert.equal(r.status, 429, 'guessing the admin secret is blocked');
+delete process.env.ADMIN_SECRET; r = await call('manualpay', { action: 'list' }, { headers: adminHeaders('admin-secret-1234567890') }); assert.equal(r.status, 503, 'no ADMIN_SECRET: admin is off');
+delete process.env.MANUAL_PAY_URL;
+console.log('ok manualpay');
 
 // ---------- Cafe Bazaar ----------
 const b2 = await credits(key);

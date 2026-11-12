@@ -4,6 +4,7 @@
  *   dist/en/index.html, dist/de/index.html, ... with <html lang dir>, a translated <title> and description,
  * and, if VITE_SITE_URL is set (e.g. https://yourdomain.com), canonical + hreflang links, sitemap.xml and robots.txt.
  * The root dist/index.html stays as the entry that sends visitors to their language.
+ * Also writes _redirects and _routes.json for Cloudflare Pages (other hosts ignore them).
  */
 import fs from 'node:fs';
 import path from 'node:path';
@@ -50,4 +51,8 @@ if (site) {
   fs.writeFileSync(path.join(dist, 'sitemap.xml'), `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:xhtml="http://www.w3.org/1999/xhtml">\n${urls}\n</urlset>\n`);
   fs.writeFileSync(path.join(dist, 'robots.txt'), `User-agent: *\nAllow: /\nSitemap: ${site}/sitemap.xml\n`);
 }
+// Cloudflare Pages: language pages answer under their own address, and only /api/* runs the Function (the rest is free static files)
+fs.writeFileSync(path.join(dist, '_redirects'), `${LANGUAGES.map((l) => `/${l.code}/* /${l.code}/index.html 200`).join('\n')}\n`);
+fs.writeFileSync(path.join(dist, '_routes.json'), `${JSON.stringify({ version: 1, include: ['/api/*'], exclude: [] }, null, 2)}\n`);
+
 console.log(`postbuild: ${LANGUAGES.length} language pages${site ? ', sitemap.xml, robots.txt' : ' (set VITE_SITE_URL for canonical/hreflang/sitemap)'}`);

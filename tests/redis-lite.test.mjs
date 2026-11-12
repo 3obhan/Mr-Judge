@@ -27,6 +27,7 @@ assert.equal(await run('EXPIRE', 'nothing', 5), 0); await run('SET', 'e', '1'); 
 // sets
 assert.deepEqual(await run('SMEMBERS', 's'), []); assert.equal(await run('SADD', 's', 'x'), 1); assert.equal(await run('SADD', 's', 'x'), 0); assert.equal(await run('SADD', 's', 'y'), 1);
 assert.deepEqual(await run('SMEMBERS', 's'), ['x', 'y']); assert.equal(await run('GET', 's'), null, 'a set is not a string'); assert.equal(await run('DEL', 's'), 1); assert.deepEqual(await run('SMEMBERS', 's'), []);
+assert.equal(await run('SADD', 'r', 'a', 'b', 'c'), 3); assert.equal(await run('SREM', 'r', 'b'), 1); assert.equal(await run('SREM', 'r', 'b'), 0); assert.deepEqual(await run('SMEMBERS', 'r'), ['a', 'c']); assert.equal(await run('SREM', 'nothing', 'x'), 0);
 await assert.rejects(() => run('FLUSHALL', 'x'), /unknown command/);
 assert.equal(await run('get', 'b'), 'x', 'command names are case-insensitive');
 // "spend one credit" style sequence never goes below zero when the app undoes a failed decrement

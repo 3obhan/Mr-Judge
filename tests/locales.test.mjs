@@ -28,7 +28,7 @@ const used = new Set();
 for (const f of files) for (const m of fs.readFileSync(f, 'utf8').matchAll(new RegExp(`['"](?:${NS})\\.[A-Za-z0-9.]+['"]`, 'g'))) used.add(m[0].slice(1, -1));
 for (const k of ['A', 'B', 'BOTH', 'NEITHER']) used.add(`judge.${k}`);
 for (const k of ['title', 'subtitle', 'personA', 'personB', 'placeholderA', 'placeholderB', 'submit', 'voiceHint', 'analyzing']) used.add(`form.${k}`);
-for (const k of ['unsupported', 'mic', 'noMic', 'tooShort', 'noSpeech', 'quota', 'key', 'server', 'network', 'generic']) used.add(`voice.${k}`);
+for (const k of ['unsupported', 'mic', 'noMic', 'tooShort', 'noSpeech', 'quota', 'key', 'server', 'network', 'generic', 'noDatabase', 'noAiKey', 'tooLong']) used.add(`voice.${k}`);
 for (const k of ['title', 'verdict', 'analysis', 'personA', 'personB', 'statement', 'statementsSection', 'certified', 'date', 'mrJudge', 'score']) used.add(`pdf.${k}`);
 const unknown = [...used].filter((k) => !(k in en));
 assert.deepEqual(unknown, [], `texts used in the code but missing from en.js: ${unknown}`);

@@ -161,5 +161,18 @@ export default {
   "pdf.certified": "Certifié par Maître Juge",
   "pdf.date": "Date",
   "pdf.mrJudge": "Maître Juge",
-  "pdf.score": "Score"
+  "pdf.score": "Score",
+  "credits.pay.link": "Lien de paiement (Iran)",
+  "credits.link.step1": "1. Payez sur la page qui s'ouvre.",
+  "credits.link.open": "Ouvrir la page de paiement",
+  "credits.link.step2": "2. Saisissez ensuite le code de suivi de votre reçu :",
+  "credits.link.placeholder": "Code de suivi",
+  "credits.link.submit": "Envoyer",
+  "credits.link.sent": "Reçu. Vos crédits seront ajoutés après confirmation du paiement. Actualisez la page plus tard.",
+  "credits.link.dup": "Ce code de suivi a déjà été envoyé.",
+  "credits.link.bad": "Saisissez le code de suivi de votre reçu de paiement.",
+  "credits.link.tooMany": "Trop de tentatives aujourd'hui. Réessayez demain.",
+  "voice.noDatabase": "La base de données du serveur n'est pas encore configurée. Demandez au propriétaire du site de terminer l'installation.",
+  "voice.noAiKey": "La clé IA est absente du serveur. Demandez au propriétaire du site de l'ajouter.",
+  "voice.tooLong": "L'enregistrement est trop volumineux. Enregistrez une partie plus courte et réessayez."
 };

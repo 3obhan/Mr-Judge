@@ -42,6 +42,7 @@ const server = net.createServer((sock) => {
         case 'INCRBY': { const v = Number(store.get(a[0]) ?? 0) + Number(a[1]); store.set(a[0], String(v)); reply(`:${v}\r\n`); break; }
         case 'EXPIRE': reply(':1\r\n'); break;
         case 'SADD': { const s = store.get(a[0]) || new Set(); s.add(a[1]); store.set(a[0], s); reply(':1\r\n'); break; }
+        case 'SREM': { const st = store.get(a[0]); reply(`:${st && st.delete(a[1]) ? 1 : 0}\r\n`); break; }
         case 'SMEMBERS': { const m = [...(store.get(a[0]) || [])]; reply(`*${m.length}\r\n${m.map(bulk).join('')}`); break; }
         default: reply(`-ERR unknown command '${c}'\r\n`);
       }
