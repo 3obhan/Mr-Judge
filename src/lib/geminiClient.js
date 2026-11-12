@@ -1,4 +1,4 @@
-import { getAccountKey, ensureAccount } from '@/lib/account';
+import { getAccountKey, ensureAccount, recreateAccount } from '@/lib/account';
 import { getLanguage } from '@/locales';
 import { GEMINI_API_KEY, GEMINI_PROXY_URL, GEMINI_MODE, GEMINI_MODELS, GEMINI_STT_MODELS } from '@/lib/llmConfig';
 
@@ -35,17 +35,25 @@ async function generateOnce(body, model, kind, ticket) {
       });
     } else {
       // 'proxy' (another site) or 'server' (same site): the key stays on the server
-      res = await fetch(`${GEMINI_PROXY_URL}/api/gemini`, {
+      const send = () => fetch(`${GEMINI_PROXY_URL}/api/gemini`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${getAccountKey()}` },
         body: JSON.stringify({ model, body, kind: kind === 'stt' ? 'stt' : 'judge', ticket }),
         signal: controller.signal,
       });
+      res = await send();
+      // The server does not know our account key (the database was replaced, or the account was deleted): start a new
+      // account and try once more. (Credits of an account the server no longer has cannot be recovered anyway.)
+      if (res.status === 401 && !ticket) {
+        const peek = await res.clone().json().catch(() => ({}));
+        if (peek?.error === 'INVALID_ACCOUNT') { await recreateAccount(); res = await send(); }
+      }
     }
   } catch (e) {
     const timedOut = e?.name === 'AbortError';
     const err = new Error(timedOut ? 'The request took too long (timeout).' : 'Network error: could not reach the server.');
     err.network = true;
+    err.code = 'NETWORK';
     err.detail = timedOut ? 'timeout' : 'network';
     throw err;
   } finally {
@@ -54,14 +62,17 @@ async function generateOnce(body, model, kind, ticket) {
   if (!res.ok) {
     const raw = await res.text().catch(() => '');
     let message = raw;
+    let apiError = '';
     try {
       const j = JSON.parse(raw);
       message = j?.error?.message || (typeof j?.error === 'string' ? j.error : raw);
+      if (typeof j?.error === 'string') apiError = j.error; // our own server's error code, e.g. ACCOUNTS_NOT_CONFIGURED
     } catch { /* keep raw text */ }
     const detail = `HTTP ${res.status}${message ? ` - ${String(message).replace(/\s+/g, ' ').slice(0, 180)}` : ''}`;
     const err = new Error(`Gemini request failed (${detail})`);
     err.status = res.status;
     err.detail = detail;
+    err.apiError = apiError;
     throw err;
   }
   const data = await res.json();
@@ -78,6 +89,7 @@ const shouldTryNext = (err) => {
   const status = err?.status;
   const detail = String(err?.detail || err?.message || '');
   if (/api key|referer|referrer|quota|billing/i.test(detail)) return false;
+  if (/NOT_CONFIGURED/.test(detail)) return false; // a setup problem on the server: other models will not help
   if (status === 404 || status === 503) return true;
   if (status === 400 || status === 403) return /model|not found|no longer|deprecat|retired|access|unsupported/i.test(detail);
   return false;
@@ -87,7 +99,7 @@ const shouldTryNext = (err) => {
 const isTransient = (err) => {
   if (err?.network) return true;
   const detail = String(err?.detail || err?.message || '');
-  if (/api key|referer|referrer|quota|billing|DAILY_LIMIT/i.test(detail)) return false;
+  if (/api key|referer|referrer|quota|billing|DAILY_LIMIT|NOT_CONFIGURED|GEMINI_API_KEY/i.test(detail)) return false; // (setup problems are not temporary)
   return [429, 500, 502, 504].includes(err?.status);
 };
 

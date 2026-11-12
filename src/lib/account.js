@@ -56,6 +56,12 @@ export async function ensureAccount() {
   return creating;
 }
 
+/** Forgets the stored key and makes a fresh anonymous account (used when the server no longer knows our key, e.g. after a database change). */
+export async function recreateAccount() {
+  signOutLocal();
+  return ensureAccount();
+}
+
 /** Authenticated call; if the server no longer knows our key, start a fresh account once and retry. */
 export async function authedApi(endpoint, payload) {
   await ensureAccount();
