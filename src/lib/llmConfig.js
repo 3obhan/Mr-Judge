@@ -20,7 +20,7 @@ export const GEMINI_MODE = GEMINI_PROXY_URL ? 'proxy' : GEMINI_API_KEY.length > 
  * Note (Oct 2026): Google now limits the 2.5 models to accounts that already used them, so new API keys
  * must use the 3.x models. gemini-2.0-* is shut down.
  */
-export const DEFAULT_MODELS = ['gemini-3.5-pro', 'gemini-3.8-flash', 'gemini-3.6-flash', 'gemini-3.5-flash-lite', 'gemini-2.5-flash'];
+export const DEFAULT_MODELS = ['gemini-2.5-pro', 'gemini-3.8-flash', 'gemini-3.6-flash', 'gemini-3.5-flash-lite', 'gemini-2.5-flash'];
 
 const parseModels = (value, fallback) => {
   const list = String(value || '').split(',').map((s) => s.trim()).filter(Boolean);
