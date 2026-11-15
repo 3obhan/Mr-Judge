@@ -11,7 +11,7 @@ import { toast } from '@/components/ui/use-toast';
 /**
  * PaymentButtons Component
  * Website: Stripe (cards, Apple Pay, Google Pay) and PayPal for everybody in every language, plus Zibal (Iranian Shetab
- * cards) for visitors in Iran or reading Persian.
+ * cards) only for visitors reading Persian.
  * Only the methods that are switched on in the server settings (api/config.js) are shown.
  * Cafe Bazaar app: Bazaar's own billing (Poolakey).
  * The price, the pack size and the check that the money really arrived are handled on the server, never in the app.
@@ -30,7 +30,7 @@ export default function PaymentButtons() {
 
   const fail = (e) => {
     console.error('Payment start failed:', e);
-    const code = e?.data?.zibalCode;
+    const code = e?.data?.zibalResult;
     const notReady = /NOT_CONFIGURED$/.test(e?.code || '');
     toast({
       title: t(notReady ? 'credits.gatewayNotReady' : 'credits.purchaseFailed'),
@@ -49,7 +49,7 @@ export default function PaymentButtons() {
       let url;
       if (method === 'stripe') ({ url } = await authedApi('stripe', { action: 'create', returnUrl: `${site}?pay=stripe`, cancelUrl: back, locale: lang }));
       else if (method === 'paypal') ({ approveUrl: url } = await authedApi('paypal', { action: 'create', returnUrl: `${site}?pp=1`, cancelUrl: back }));
-      else ({ payUrl: url } = await authedApi('zibal', { action: 'create', callbackUrl: `${site}?zp=1` }));
+      else ({ payUrl: url } = await authedApi('zibal', { action: 'create', callbackUrl: `${site}?success=1` }));
       window.location.href = url;
     } catch (e) { fail(e); }
   };
@@ -84,8 +84,8 @@ export default function PaymentButtons() {
   const inIran = config.country === 'IR';
   if (!inIran && config.methods.stripe) methods.push({ id: 'stripe', label: t('credits.pay.card'), price: priceText('usd', config, lang), cls: 'bg-indigo-600 hover:bg-indigo-700', icon: <CreditCard className="w-5 h-5" /> });
   if (!inIran && config.methods.paypal) methods.push({ id: 'paypal', label: t('credits.pay.paypal'), price: priceText('usd', config, lang), cls: 'bg-[#0070ba] hover:bg-[#005ea6]', icon: <ExternalLink className="w-4 h-4" /> });
-  // Zibal: for visitors in Iran (whatever language they picked) and for everyone reading Persian
-  if (config.methods.zibal && (lang === 'fa' || config.country === 'IR')) methods.unshift({ id: 'zibal', label: t('credits.pay.shetab'), price: priceText('toman', config, lang), cls: 'bg-green-600 hover:bg-green-700', icon: <CreditCard className="w-5 h-5" /> });
+  // Zibal is available only in the Persian-language interface.
+  if (config.methods.zibal && lang === 'fa') methods.unshift({ id: 'zibal', label: t('credits.pay.shetab'), price: priceText('toman', config, lang), cls: 'bg-green-600 hover:bg-green-700', icon: <CreditCard className="w-5 h-5" /> });
   if (!methods.length) console.warn('No payment method is switched on. The server says:', config); // open /api/config to see which keys are missing
   if (!methods.length) return <p className="text-sm text-muted-foreground text-center">{t('credits.pay.none')}</p>;
 
