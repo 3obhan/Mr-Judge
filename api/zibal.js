@@ -27,7 +27,7 @@ const safeUrl = (req, u) => {
   }
 };
 
-const apiBase = () => process.env.ZIBAL_API_BASE || 'https://gateway.zibal.ir';
+const apiBase = () => process.env.ZIBAL_API_BASE || 'https://gateway.zibal.io';
 
 async function zibal(path, payload) {
   const r = await fetch(`${apiBase()}/v1/${path}`, {
@@ -69,7 +69,7 @@ export default async function handler(req, res) {
 
       return res.status(200).json({
         trackId: data.trackId,
-        payUrl: `https://gateway.zibal.ir/start/${data.trackId}`,
+        payUrl: `https://gateway.zibal.io/start/${data.trackId}`,
       });
     }
 
