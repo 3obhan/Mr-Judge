@@ -49,8 +49,7 @@ export default function PaymentButtons() {
       let url;
       if (method === 'stripe') ({ url } = await authedApi('stripe', { action: 'create', returnUrl: `${site}?pay=stripe`, cancelUrl: back, locale: lang }));
       else if (method === 'paypal') ({ approveUrl: url } = await authedApi('paypal', { action: 'create', returnUrl: `${site}?pp=1`, cancelUrl: back }));
-      else ({ payUrl: url } = await authedApi('zibal', { action: 'create',
-  callbackUrl: `https://mantecapp.vercel.app/${lang}/Credits?success=1` }));
+      else ({ payUrl: url } = await authedApi('zibal', { action: 'create', callbackUrl: `${site}?success=1` }));
       window.location.href = url;
     } catch (e) { fail(e); }
   };
