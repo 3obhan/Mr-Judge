@@ -41,7 +41,7 @@ export default function Credits() {
     } catch { /* ignore */ }
     if (pending?.provider && pending?.id) {
       const call = {
-        zarinpal: () => authedApi('zarinpal', { action: 'verify', authority: pending.id }),
+        zibal: () => authedApi('zibal', { action: 'verify', trackId: pending.id }),
         paypal: () => authedApi('paypal', { action: 'capture', orderId: pending.id }),
         stripe: () => authedApi('stripe', { action: 'verify', sessionId: pending.id }),
       }[pending.provider];

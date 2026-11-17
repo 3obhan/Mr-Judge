@@ -5,11 +5,12 @@ import { transcribeAudio } from '@/lib/geminiClient';
 import { preparePcm } from '@/lib/audioUtils';
 import { startPcmRecording } from '@/lib/pcmRecorder';
 import { translate } from '@/locales';
+import { voiceErrorKey } from '@/lib/voiceErrors';
 
 const MAX_SECONDS = 240;   // auto-stop after 4 minutes
 const MIN_SECONDS = 0.6;   // ignore accidental taps
 
-const MESSAGE_KEYS = ['unsupported', 'mic', 'noMic', 'tooShort', 'noSpeech', 'quota', 'key', 'server', 'network', 'generic'];
+const MESSAGE_KEYS = ['unsupported', 'mic', 'noMic', 'tooShort', 'noSpeech', 'quota', 'key', 'server', 'network', 'generic', 'noDatabase', 'noAiKey', 'tooLong'];
 const messagesFor = (lang) => Object.fromEntries(MESSAGE_KEYS.map((k) => [k, translate(lang, `voice.${k}`)]));
 
 const fmtTime = (s) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
@@ -81,14 +82,7 @@ export default function VoiceButton({ value, onChange, language = 'en' }) {
     try { recorderRef.current?.cancel(); } catch { /* noop */ }
   }, []);
 
-  const errorToMessage = (err, m) => {
-    const s = err?.status;
-    if (s === 429) return m.quota;
-    if (s === 404 || s === 405) return m.server;
-    if (s === 401 || s === 403 || s === 500) return m.key;
-    if (err instanceof TypeError) return m.network; // fetch itself failed
-    return m.generic;
-  };
+  const errorToMessage = (err, m) => m[voiceErrorKey(err)] || m.generic;
 
   const processRecording = async (samples, sampleRate) => {
     const lang = languageRef.current;
