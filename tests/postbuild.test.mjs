@@ -8,6 +8,7 @@ import assert from 'node:assert/strict';
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const html = '<!doctype html>\n<html lang="en">\n  <head>\n    <meta charset="UTF-8" />\n    <title>Mr Judge</title>\n  </head>\n  <body>\n    <div id="root"></div>\n  </body>\n</html>\n';
 const run = (env) => {
+  for (const k of ['SITE_URL', 'VITE_SITE_URL', 'VERCEL_PROJECT_PRODUCTION_URL']) delete process.env[k];
   const dist = fs.mkdtempSync(path.join(os.tmpdir(), 'dist-'));
   fs.writeFileSync(path.join(dist, 'index.html'), html);
   const r = spawnSync(process.execPath, [path.join(root, 'scripts/postbuild.mjs')], { env: { ...process.env, DIST_DIR: dist, ...env }, encoding: 'utf8' });
@@ -24,6 +25,11 @@ for (const [code, dir] of [['en', 'ltr'], ['fa', 'rtl'], ['ar', 'rtl'], ['tr', '
 }
 assert.match(fs.readFileSync(path.join(dist, 'de/index.html'), 'utf8'), /<title>Herr Richter – Streitigkeiten mit intelligenter/, 'German title');
 assert.match(fs.readFileSync(path.join(dist, 'fa/index.html'), 'utf8'), /<title>آقای داور – /, 'Persian title (the brand name of the Persian locale)');
+const SEAL = "<a referrerpolicy='origin' target='_blank' href='https://trustseal.enamad.ir/?id=8445411&Code=K5Y2bD303AnVuuikbflElWHfWwWIEgam'><img referrerpolicy='origin' src='https://trustseal.enamad.ir/logo.aspx?id=8445411&Code=K5Y2bD303AnVuuikbflElWHfWwWIEgam' alt='' style='cursor:pointer' code='K5Y2bD303AnVuuikbflElWHfWwWIEgam'></a>";
+assert.ok(fs.readFileSync(path.join(dist, 'fa/index.html'), 'utf8').includes(SEAL), 'the Persian page contains Enamad\'s code exactly as issued');
+assert.match(fs.readFileSync(path.join(dist, 'fa/index.html'), 'utf8'), /<div id="root"><\/div>\s*<div id="enamad-static"/, 'right after the app root, in the static HTML');
+for (const code of ['en', 'ar', 'tr', 'de', 'fr', 'es', 'ru']) assert.ok(!fs.readFileSync(path.join(dist, code, 'index.html'), 'utf8').includes('enamad'), `${code}: no seal on other languages`);
+assert.ok(!fs.readFileSync(path.join(dist, 'index.html'), 'utf8').includes('enamad'), 'and not on the root page');
 assert.ok(!fs.existsSync(path.join(dist, 'sitemap.xml')));
 const redirects = fs.readFileSync(path.join(dist, '_redirects'), 'utf8').trim().split('\n');
 assert.equal(redirects.length, 8); assert.ok(redirects.includes('/de/* /de/index.html 200') && redirects.includes('/fa/* /fa/index.html 200'), 'Pages: every language page answers under its address');
@@ -36,4 +42,8 @@ assert.match(de, /<link rel="canonical" href="https:\/\/example\.com\/de\/" \/>/
 assert.match(de, /hreflang="fa" href="https:\/\/example\.com\/fa\/"/); assert.match(de, /hreflang="x-default" href="https:\/\/example\.com\/en\/"/);
 const sm = fs.readFileSync(path.join(dist, 'sitemap.xml'), 'utf8'); assert.equal((sm.match(/<url>/g) || []).length, 8); assert.match(sm, /<loc>https:\/\/example\.com\/ru\/<\/loc>/);
 assert.match(fs.readFileSync(path.join(dist, 'robots.txt'), 'utf8'), /Sitemap: https:\/\/example\.com\/sitemap\.xml/);
+// one address for everything: SITE_URL, the older VITE_SITE_URL, or Vercel's own variable
+dist = run({ SITE_URL: 'https://site-url.test' }); assert.match(fs.readFileSync(path.join(dist, 'fr/index.html'), 'utf8'), /canonical" href="https:\/\/site-url\.test\/fr\/"/);
+dist = run({ VERCEL_PROJECT_PRODUCTION_URL: 'my-app.vercel.app' }); assert.match(fs.readFileSync(path.join(dist, 'fr/index.html'), 'utf8'), /canonical" href="https:\/\/my-app\.vercel\.app\/fr\/"/, 'on Vercel the address is found automatically');
+dist = run({ SITE_URL: 'https://wins.test', VERCEL_PROJECT_PRODUCTION_URL: 'ignored.vercel.app' }); assert.match(fs.readFileSync(path.join(dist, 'de/index.html'), 'utf8'), /https:\/\/wins\.test\/de\//, 'SITE_URL wins');
 console.log('postbuild OK');

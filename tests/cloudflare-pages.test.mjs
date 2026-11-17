@@ -8,7 +8,7 @@ register('./loader.mjs', import.meta.url);
 const { onRequest } = await import(new URL('../functions/api/[[path]].js', import.meta.url));
 
 const DB = makeD1();
-const env = { DB, GEMINI_API_KEY: 'gk', STRIPE_SECRET_KEY: 'sk_test_x', STRIPE_WEBHOOK_SECRET: 'whsec_pages', ADMIN_SECRET: 'admin-secret-1234567890', FALLBACK_API_KEY: 'fb' };
+const env = { DB, GEMINI_API_KEY: 'gk', STRIPE_SECRET_KEY: 'sk_test_x', STRIPE_WEBHOOK_SECRET: 'whsec_pages', ADMIN_SECRET: 'admin-secret-1234567890', MANUAL_PAY_URL: 'https://pay.example.test/p/1', FALLBACK_API_KEY: 'fb' };
 globalThis.fetch = async (url) => {
   const u = String(url);
   if (u.includes('generativelanguage.googleapis.com')) return new Response(JSON.stringify({ error: { message: 'Resource has been exhausted (e.g. check quota).' } }), { status: 429 });
@@ -24,7 +24,7 @@ const call = async (path, { method = 'POST', body, key, headers = {}, raw } = {}
 };
 
 let r = await call('/api/config', { method: 'GET' }); assert.equal(r.status, 200); assert.equal(r.json.methods.stripe, true); assert.equal(r.json.ready.redis, true, 'the D1 database counts as the built-in database');
-assert.equal(r.json.methods.link, true, 'ADMIN_SECRET switches the payment link on');
+assert.equal(r.json.methods.link, true, 'MANUAL_PAY_URL + ADMIN_SECRET switch the payment link on');
 r = await call('/api/account', { body: { action: 'create' } }); const key = r.json.accountKey; assert.equal(r.json.credits, 2);
 r = await call('/api/credits', { body: { action: 'spend' }, key }); assert.equal(r.json.credits, 1); const ticket = r.json.ticket;
 r = await call('/api/gemini', { body: { model: 'gemini-3.8-flash', body: { contents: [{ role: 'user', parts: [{ text: 'judge' }] }] }, ticket }, key });

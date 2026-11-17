@@ -12,13 +12,16 @@ import { stripeConfigured } from './_lib/stripe.js';
 import { redisConfigured } from './_lib/redis.js';
 import { emailConfigured } from './_lib/email.js';
 
-export const APP_VERSION = 'global-4';
+export const APP_VERSION = 'global-5';
+
 
 export default async function handler(req, res) {
   if (guard(req, res, { needRedis: false, allowGet: true })) return;
   const env = process.env;
   const country = String(req.headers['x-vercel-ip-country'] || req.headers['cf-ipcountry'] || '').toUpperCase();
   const key = env.STRIPE_SECRET_KEY || '';
+  const linkUrl = String(env.MANUAL_PAY_URL || '').trim(); // optional hand-confirmed payment link (see manualpay.js); off unless you set it
+  const linkOn = /^https:\/\//.test(linkUrl) && String(env.ADMIN_SECRET || '').length >= 16; // only offered when you can approve payments
   res.setHeader('Cache-Control', 'no-store');
   return res.status(200).json({
     version: APP_VERSION,
@@ -30,7 +33,9 @@ export default async function handler(req, res) {
       stripe: stripeConfigured(),
       paypal: !!(env.PAYPAL_CLIENT_ID && env.PAYPAL_CLIENT_SECRET),
       zibal: !!env.ZIBAL_MERCHANT,
+      link: linkOn,
     },
+    linkUrl: linkOn ? linkUrl : '',
     stripeMode: key.startsWith('sk_live_') || key.startsWith('rk_live_') ? 'live' : key ? 'test' : null,
     ready: { redis: redisConfigured(), gemini: !!(env.GEMINI_API_KEY || env.FALLBACK_API_KEY), email: emailConfigured() },
   });

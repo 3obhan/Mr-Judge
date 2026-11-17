@@ -2,8 +2,9 @@
  * Runs after `vite build` (see package.json "build"). Gives every language its own real page so search engines and
  * link previews see the right language:
  *   dist/en/index.html, dist/de/index.html, ... with <html lang dir>, a translated <title> and description,
- * and, if VITE_SITE_URL is set (e.g. https://yourdomain.com), canonical + hreflang links, sitemap.xml and robots.txt.
+ * and, if SITE_URL is set (e.g. https://yourdomain.com; on Vercel it is found automatically), canonical + hreflang links, sitemap.xml and robots.txt.
  * The root dist/index.html stays as the entry that sends visitors to their language.
+ * The Persian page also carries the Enamad trust seal (src/lib/enamad.js).
  * Also writes _redirects and _routes.json for Cloudflare Pages (other hosts ignore them).
  */
 import fs from 'node:fs';
@@ -12,8 +13,11 @@ import { fileURLToPath } from 'node:url';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const dist = process.env.DIST_DIR || path.join(root, 'dist');
-const site = String(process.env.VITE_SITE_URL || '').replace(/\/$/, '');
+// ONE address for everything: SITE_URL (or VITE_SITE_URL); on Vercel the production address is found automatically
+const vercelHost = process.env.VERCEL_PROJECT_PRODUCTION_URL || '';
+const site = String(process.env.SITE_URL || process.env.VITE_SITE_URL || (vercelHost ? `https://${vercelHost}` : '')).replace(/\/$/, '');
 const { LANGUAGES } = await import(new URL('../src/locales/index.js', import.meta.url));
+const { enamadHtml } = await import(new URL('../src/lib/enamad.js', import.meta.url));
 
 const esc = (s) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 const source = fs.readFileSync(path.join(dist, 'index.html'), 'utf8');
@@ -34,9 +38,11 @@ for (const l of LANGUAGES) {
     site ? `<link rel="canonical" href="${site}/${l.code}/" />` : '',
     alternates,
   ].filter(Boolean).join('\n    ');
-  const html = source
+  let html = source
     .replace(/<html[^>]*>/, `<html lang="${l.code}" dir="${l.dir}">`)
     .replace(/<title>[\s\S]*?<\/title>/, `<title>${esc(title)}</title>\n    ${head}`);
+  // Enamad trust seal: in the static HTML of the Persian page only (Enamad's checker reads the page source)
+  if (l.code === 'fa') html = html.replace('<div id="root"></div>', `<div id="root"></div>\n    <div id="enamad-static" style="text-align:center;padding:16px 0 112px">${enamadHtml()}</div>`);
   fs.mkdirSync(path.join(dist, l.code), { recursive: true });
   fs.writeFileSync(path.join(dist, l.code, 'index.html'), html);
 }
@@ -55,4 +61,4 @@ if (site) {
 fs.writeFileSync(path.join(dist, '_redirects'), `${LANGUAGES.map((l) => `/${l.code}/* /${l.code}/index.html 200`).join('\n')}\n`);
 fs.writeFileSync(path.join(dist, '_routes.json'), `${JSON.stringify({ version: 1, include: ['/api/*'], exclude: [] }, null, 2)}\n`);
 
-console.log(`postbuild: ${LANGUAGES.length} language pages${site ? ', sitemap.xml, robots.txt' : ' (set VITE_SITE_URL for canonical/hreflang/sitemap)'}`);
+console.log(`postbuild: ${LANGUAGES.length} language pages${site ? ', sitemap.xml, robots.txt' : ' (set SITE_URL for canonical/hreflang/sitemap)'}`);

@@ -1,15 +1,14 @@
 /**
- * One-time setup of the Android project for the Cafe Bazaar build.
- * Run AFTER:  npm run build:bazaar && npx cap add android
- *   node scripts/setup-bazaar-android.mjs
+ * One-time setup of the Android app (a shell around the website) for Cafe Bazaar billing.
+ * Run AFTER:  SITE_URL=https://your-site APP_ID=com.yourname.mrjudge npx cap add android
+ *   APP_ID=com.yourname.mrjudge node scripts/setup-bazaar-android.mjs
  * It is safe to run again. Anything it cannot patch is printed as a "MANUAL" step.
  */
 import fs from 'node:fs';
 import path from 'node:path';
 
 const root = process.cwd();
-const cfg = JSON.parse(fs.readFileSync(path.join(root, 'capacitor.config.json'), 'utf8'));
-const appId = cfg.appId;
+const appId = process.env.APP_ID || 'com.yourname.mrjudge'; // must be the same APP_ID you gave to Capacitor
 const KOTLIN = '2.1.20';
 const POOLAKEY = 'com.github.cafebazaar.Poolakey:poolakey:2.2.0';
 const manual = [];
@@ -19,7 +18,7 @@ const read = (p) => fs.readFileSync(p, 'utf8');
 const write = (p, s) => fs.writeFileSync(p, s);
 const androidDir = path.join(root, 'android');
 if (!fs.existsSync(androidDir)) { console.error('android/ not found. Run: npx cap add android'); process.exit(1); }
-if (!/^[a-z][a-z0-9_]*(\.[a-z][a-z0-9_]*)+$/.test(appId)) { console.error(`Bad appId "${appId}" in capacitor.config.json`); process.exit(1); }
+if (!/^[a-z][a-z0-9_]*(\.[a-z][a-z0-9_]*)+$/.test(appId)) { console.error(`Bad APP_ID "${appId}" (lower-case letters, digits and dots, e.g. com.yourname.mrjudge)`); process.exit(1); }
 
 // 1) Plugin source + MainActivity
 const javaDir = path.join(androidDir, 'app/src/main/java', ...appId.split('.'));
