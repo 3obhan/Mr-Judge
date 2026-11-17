@@ -1,5 +1,5 @@
 import { authedApi, setCachedCredits } from '@/lib/account';
-import { STORE, BAZAAR_RSA_KEY, BAZAAR_PRODUCT_ID } from '@/lib/store';
+import { isNativeApp, BAZAAR_RSA_KEY, BAZAAR_PRODUCT_ID } from '@/lib/store';
 
 /**
  * Cafe Bazaar billing (Poolakey) through the native Capacitor plugin in native/android/PoolakeyPlugin.kt.
@@ -10,8 +10,8 @@ import { STORE, BAZAAR_RSA_KEY, BAZAAR_PRODUCT_ID } from '@/lib/store';
  */
 const plugin = () => (typeof window !== 'undefined' ? window.Capacitor?.Plugins?.Poolakey : undefined);
 
-/** True only inside the Bazaar Android build (the plugin does not exist in a browser). */
-export const bazaarReady = () => STORE === 'bazaar' && !!plugin();
+/** True only inside the Android app (the Poolakey plugin does not exist in a browser). */
+export const bazaarReady = () => isNativeApp() && !!plugin();
 
 let onGranted = () => {};
 export const setBazaarGrantedHandler = (fn) => { onGranted = fn; };
