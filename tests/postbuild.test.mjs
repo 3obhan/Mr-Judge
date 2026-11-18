@@ -24,7 +24,7 @@ for (const [code, dir] of [['en', 'ltr'], ['fa', 'rtl'], ['ar', 'rtl'], ['tr', '
   assert.ok(!page.includes('hreflang'), 'no hreflang without a site address');
 }
 assert.match(fs.readFileSync(path.join(dist, 'de/index.html'), 'utf8'), /<title>Herr Richter – Streitigkeiten mit intelligenter/, 'German title');
-assert.match(fs.readFileSync(path.join(dist, 'fa/index.html'), 'utf8'), /<title>آقای داور – /, 'Persian title (the brand name of the Persian locale)');
+assert.match(fs.readFileSync(path.join(dist, 'fa/index.html'), 'utf8'), /<title>آقای دادگر – /, 'Persian title (the brand name of the Persian locale)');
 const SEAL = "<a referrerpolicy='origin' target='_blank' href='https://trustseal.enamad.ir/?id=8445411&Code=K5Y2bD303AnVuuikbflElWHfWwWIEgam'><img referrerpolicy='origin' src='https://trustseal.enamad.ir/logo.aspx?id=8445411&Code=K5Y2bD303AnVuuikbflElWHfWwWIEgam' alt='' style='cursor:pointer' code='K5Y2bD303AnVuuikbflElWHfWwWIEgam'></a>";
 assert.ok(fs.readFileSync(path.join(dist, 'fa/index.html'), 'utf8').includes(SEAL), 'the Persian page contains Enamad\'s code exactly as issued');
 assert.match(fs.readFileSync(path.join(dist, 'fa/index.html'), 'utf8'), /<div id="root"><\/div>\s*<div id="enamad-static"/, 'right after the app root, in the static HTML');
