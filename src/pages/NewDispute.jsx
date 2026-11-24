@@ -150,6 +150,7 @@ export default function NewDispute() {
           onSubmit={analyzeDispute}
           isLoading={isLoading}
           disabled={(credits?.remaining_credits || 0) <= 0}
+          voiceDisabled={credits == null || credits.remaining_credits <= 0}
         />
       </div>
 
