@@ -28,6 +28,9 @@ const MAX_OK_CALLS = 2;
 const TICKET_TTL_SECONDS = 900;
 const STT_PER_DAY = Number(process.env.STT_PER_DAY || 60);
 
+// Avoid spending the whole Vercel function window waiting on a stalled primary provider.
+const GEMINI_TIMEOUT_MS = 18_000;
+
 export default async function handler(req, res) {
   if (guard(req, res)) return;
 
@@ -62,10 +65,22 @@ export default async function handler(req, res) {
     let out = null;
     if (key && env.AI_PRIMARY !== 'fallback') {
       try {
-        const upstream = await fetch(
-          `${env.GEMINI_API_BASE || 'https://generativelanguage.googleapis.com'}/v1beta/models/${encodeURIComponent(model)}:generateContent`,
-          { method: 'POST', headers: { 'Content-Type': 'application/json', 'x-goog-api-key': key }, body: JSON.stringify(body) }
-        );
+        const controller = new AbortController();
+        const timer = setTimeout(() => controller.abort(), GEMINI_TIMEOUT_MS);
+        let upstream;
+        try {
+          upstream = await fetch(
+            `${env.GEMINI_API_BASE || 'https://generativelanguage.googleapis.com'}/v1beta/models/${encodeURIComponent(model)}:generateContent`,
+            {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json', 'x-goog-api-key': key },
+              body: JSON.stringify(body),
+              signal: controller.signal,
+            }
+          );
+        } finally {
+          clearTimeout(timer);
+        }
         out = { status: upstream.status, text: await upstream.text() };
       } catch (e) {
         console.warn('gemini unreachable:', e.message);
