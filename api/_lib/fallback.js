@@ -69,7 +69,15 @@ async function transcribe(env, body, audio) {
   form.append('temperature', '0');
   // the app's voice prompt starts with "Language code: xx" (ISO 639-1): it helps Whisper a lot
   const code = /Language code:\s*([a-z]{2,3})/i.exec(textOf(body))?.[1] || (/persian|farsi|فارسی/i.test(textOf(body)) ? 'fa' : '');
-  if (code) form.append('language', code.toLowerCase());
+if (code) form.append('language', code.toLowerCase());
+
+if (String(code).toLowerCase() === 'fa') {
+  form.append(
+    'prompt',
+    'متن فارسی با الفبای فارسی نوشته می‌شود، نه فینگلیش. نمونهٔ نگارش: امروز می‌خواهم دربارهٔ این موضوع صحبت کنم.'
+  );
+}
+
   const res = await fetch(`${baseUrl(env)}/audio/transcriptions`, {
     method: 'POST',
     headers: { Authorization: `Bearer ${env.FALLBACK_API_KEY}` },

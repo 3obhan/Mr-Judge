@@ -21,7 +21,7 @@ import { guard, body as readBody, today } from './_lib/http.js';
 import { authUser } from './_lib/auth.js';
 import { fallbackConfigured, shouldFallback, runFallback } from './_lib/fallback.js';
 
-const ALLOWED_MODELS = (process.env.GEMINI_ALLOWED_MODELS || 'gemini-3.8-flash,gemini-1.5-pro')
+const ALLOWED_MODELS = (process.env.GEMINI_ALLOWED_MODELS || 'gemini-3.8-flash,gemini-3.6-flash,gemini-3.5-flash-lite,gemini-3.5-flash,gemini-2.5-flash,gemini-2.5-flash-lite')
   .split(',').map((s) => s.trim()).filter(Boolean);
 
 const MAX_OK_CALLS = 2;
