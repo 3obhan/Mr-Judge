@@ -25,7 +25,7 @@ const joinText = (base, addition) => `${base || ''} ${addition || ''}`.replace(/
  * @param {function} onChange - setter for the textarea value
  * @param {string} language - language code (en, fa, ar, ...)
  */
-export default function VoiceButton({ value, onChange, language = 'en' }) {
+export default function VoiceButton({ value, onChange, language = 'en', disabled = false }) {
   const [isRecording, setIsRecording] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [elapsed, setElapsed] = useState(0);
@@ -145,6 +145,7 @@ export default function VoiceButton({ value, onChange, language = 'en' }) {
 
   // NOTE: no await before startPcmRecording(): Safari needs the audio context created inside the tap.
   const startRecording = async () => {
+    if (disabled) return;
     const m = msgs(languageRef.current);
     try {
       levelRef.current = 0;
@@ -192,7 +193,7 @@ export default function VoiceButton({ value, onChange, language = 'en' }) {
         variant="outline"
         size="sm"
         onClick={toggleRecording}
-        disabled={isProcessing}
+        disabled={disabled || isProcessing}
         className={`gap-1.5 transition-all duration-200 shrink-0 ${
           isRecording
             ? 'bg-red-50 border-red-300 text-red-600 hover:bg-red-100 hover:text-red-700'
