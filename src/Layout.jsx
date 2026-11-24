@@ -1,7 +1,6 @@
 import React from 'react';
 import BottomTabBar from '@/components/arbiter/BottomTabBar';
 import LanguageSwitcher from '@/components/arbiter/LanguageSwitcher';
-import EnamadSeal from '@/components/arbiter/EnamadSeal';
 import { useLang } from '@/lib/i18n';
 
 /**
@@ -70,7 +69,6 @@ export default function Layout({ children }) {
 
       <LanguageSwitcher />
       {children}
-      <EnamadSeal />
       <BottomTabBar />
     </div>
   );
