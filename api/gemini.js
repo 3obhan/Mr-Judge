@@ -18,7 +18,7 @@
  */
 import { cmd } from './_lib/redis.js';
 import { guard, body as readBody, today } from './_lib/http.js';
-import { authUser } from './_lib/auth.js';
+import { authUser, creditsKey } from './_lib/auth.js';
 import { fallbackConfigured, shouldFallback, runFallback } from './_lib/fallback.js';
 
 // Keep this allow-list aligned with src/lib/llmConfig.js.
@@ -51,6 +51,10 @@ export default async function handler(req, res) {
 
     let ticketKey = null;
     if (kind === 'stt') {
+      // Voice-to-text is available only while the account has at least one analysis credit.
+      // Enforce this server-side too, so hiding the microphone is not the only protection.
+      const balance = Number(await cmd('GET', creditsKey(user.uid))) || 0;
+      if (balance <= 0) return res.status(402).json({ error: 'NO_CREDITS' });
       const k = `stt:${user.uid}:${today()}`;
       const n = await cmd('INCR', k);
       if (n === 1) await cmd('EXPIRE', k, 172800);
