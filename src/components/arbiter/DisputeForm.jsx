@@ -14,7 +14,7 @@ import { MAX_STATEMENT_CHARS } from '@/lib/judge';
  * Elegant form for entering dispute details from both parties
  * Texts come from src/locales (any language)
  */
-export default function DisputeForm({ onSubmit, isLoading, disabled = false }) {
+export default function DisputeForm({ onSubmit, isLoading, disabled = false, voiceDisabled = false }) {
   const [personA, setPersonA] = useState(() => loadDraft().personA);
   const [personB, setPersonB] = useState(() => loadDraft().personB);
   const { lang: language, n, t: tr, dir } = useLang();
@@ -76,7 +76,7 @@ export default function DisputeForm({ onSubmit, isLoading, disabled = false }) {
           {t.personA}
           <span className="ms-auto flex items-center gap-2">
             <span className="text-xs text-muted-foreground hidden sm:inline">{t.voiceHint}</span>
-            <VoiceButton value={personA} onChange={setPersonA} language={language} />
+            <VoiceButton value={personA} onChange={setPersonA} language={language} disabled={voiceDisabled} />
           </span>
         </Label>
         <Textarea
@@ -115,7 +115,7 @@ export default function DisputeForm({ onSubmit, isLoading, disabled = false }) {
           {t.personB}
           <span className="ms-auto flex items-center gap-2">
             <span className="text-xs text-muted-foreground hidden sm:inline">{t.voiceHint}</span>
-            <VoiceButton value={personB} onChange={setPersonB} language={language} />
+            <VoiceButton value={personB} onChange={setPersonB} language={language} disabled={voiceDisabled} />
           </span>
         </Label>
         <Textarea
