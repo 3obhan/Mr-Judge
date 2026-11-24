@@ -4,7 +4,7 @@ import { CreditCard, ExternalLink, Link2, Loader2 } from 'lucide-react';
 import { Input } from "@/components/ui/input";
 import { authedApi } from '@/lib/account';
 import { useLang } from '@/lib/i18n';
-import { externalPaymentsAllowed } from '@/lib/store';
+import { EXTERNAL_PAYMENTS_ALLOWED } from '@/lib/store';
 import { billingReady, buyCredits } from '@/lib/billing';
 import { fetchPublicConfig, priceText } from '@/lib/pricing';
 import { availableMethods } from '@/lib/paymentMethods';
@@ -28,7 +28,7 @@ export default function PaymentButtons() {
   const storeBilling = billingReady();
 
   useEffect(() => {
-    if (storeBilling || !externalPaymentsAllowed()) return;
+    if (storeBilling || !EXTERNAL_PAYMENTS_ALLOWED) return;
     fetchPublicConfig().then(setConfig).catch(() => setConfigFailed(true));
   }, [storeBilling]);
 
@@ -91,7 +91,7 @@ export default function PaymentButtons() {
     );
   }
   // Inside the Android app without the store billing plugin: no way to pay there
-  if (!externalPaymentsAllowed()) return <p className="text-sm text-muted-foreground text-center">{t('credits.storeNotice')}</p>;
+  if (!EXTERNAL_PAYMENTS_ALLOWED) return <p className="text-sm text-muted-foreground text-center">{t('credits.storeNotice')}</p>;
 
   if (configFailed) return <p className="text-sm text-muted-foreground text-center">{t('credits.pay.none')}</p>;
   if (!config) return <div className="flex justify-center py-4"><Loader2 className="w-5 h-5 animate-spin text-muted-foreground" /></div>;
