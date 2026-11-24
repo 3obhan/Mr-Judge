@@ -23,7 +23,17 @@ const sttSupported = (env) => /(^|\.)groq\.com$/i.test(hostOf(baseUrl(env))) || 
 /** Should a failed Gemini answer be retried on the backup? (not for plain bad requests or retired models) */
 export function shouldFallback(status, text) {
   if (status === 429 || status === 401 || status === 403 || status >= 500) return true;
-  return status === 400 && /location is not supported/i.test(String(text || ''));
+
+  // Some Gemini 400 responses are provider/model compatibility failures rather than
+  // bad user input. In those cases, let the configured OpenAI-compatible backup answer.
+  // Keep ordinary INVALID_ARGUMENT errors out of fallback to avoid hiding real bugs.
+  const message = String(text || '');
+  return status === 400 && (
+    /location is not supported/i.test(message) ||
+    /model[^\n]{0,100}(not found|not available|unsupported|does not exist)/i.test(message) ||
+    /(responseSchema|response schema|structured output|json schema)[^\n]{0,160}(invalid|unsupported|not supported|failed)/i.test(message) ||
+    /(invalid|unsupported)[^\n]{0,100}(responseSchema|response schema|structured output|json schema)/i.test(message)
+  );
 }
 
 const partsOf = (body) => (body?.contents || []).flatMap((c) => c?.parts || []);
