@@ -67,9 +67,8 @@ export default async function handler(req, res) {
       try {
         const controller = new AbortController();
         const timer = setTimeout(() => controller.abort(), GEMINI_TIMEOUT_MS);
-        let upstream;
         try {
-          upstream = await fetch(
+          const upstream = await fetch(
             `${env.GEMINI_API_BASE || 'https://generativelanguage.googleapis.com'}/v1beta/models/${encodeURIComponent(model)}:generateContent`,
             {
               method: 'POST',
@@ -78,10 +77,11 @@ export default async function handler(req, res) {
               signal: controller.signal,
             }
           );
+          // Keep the timeout active while reading the response body too.
+          out = { status: upstream.status, text: await upstream.text() };
         } finally {
           clearTimeout(timer);
         }
-        out = { status: upstream.status, text: await upstream.text() };
       } catch (e) {
         console.warn('gemini unreachable:', e.message);
       }
