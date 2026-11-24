@@ -28,11 +28,14 @@ export function shouldFallback(status, text) {
   // bad user input. In those cases, let the configured OpenAI-compatible backup answer.
   // Keep ordinary INVALID_ARGUMENT errors out of fallback to avoid hiding real bugs.
   const message = String(text || '');
+  const mentionsModel = /model/i.test(message);
+  const modelProblem = mentionsModel && /not found|not available|unsupported|does not exist|not supported|deprecated|retired|unknown model/i.test(message);
+  const mentionsSchema = /response[_ ]?schema|structured[_ ]?output|json[_ ]?schema/i.test(message);
+  const schemaProblem = mentionsSchema && /invalid|unsupported|not supported|not allowed|cannot|unknown|failed|unrecognized/i.test(message);
   return status === 400 && (
     /location is not supported/i.test(message) ||
-    /model[^\n]{0,100}(not found|not available|unsupported|does not exist)/i.test(message) ||
-    /(responseSchema|response schema|structured output|json schema)[^\n]{0,160}(invalid|unsupported|not supported|failed)/i.test(message) ||
-    /(invalid|unsupported)[^\n]{0,100}(responseSchema|response schema|structured output|json schema)/i.test(message)
+    modelProblem ||
+    schemaProblem
   );
 }
 
