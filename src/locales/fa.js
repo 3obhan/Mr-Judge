@@ -107,7 +107,7 @@ export default {
   "nf.title": "صفحه پیدا نشد",
   "nf.desc": "صفحه‌ی «{p}» در این برنامه پیدا نشد.",
   "nf.home": "بازگشت به خانه",
-  "logo.name": "آقای دادگر",
+  "logo.name": "آقای داور",
   "credits.pay.choose": "روش پرداخت را انتخاب کنید",
   "credits.pay.card": "کارت بین‌المللی · Apple Pay · Google Pay",
   "credits.pay.paypal": "پی‌پال",

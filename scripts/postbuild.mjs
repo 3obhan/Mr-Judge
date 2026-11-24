@@ -42,7 +42,7 @@ for (const l of LANGUAGES) {
     .replace(/<html[^>]*>/, `<html lang="${l.code}" dir="${l.dir}">`)
     .replace(/<title>[\s\S]*?<\/title>/, `<title>${esc(title)}</title>\n    ${head}`);
   // Enamad trust seal: in the static HTML of the Persian page only (Enamad's checker reads the page source)
-  if (l.code === 'fa') html = html.replace('<div id="root"></div>', `<div id="root"></div>\n    <div id="enamad-static" style="text-align:center;padding:16px 0 112px">${enamadHtml()}</div>`);
+  if (l.code === 'fa') html = html.replace('<div id="root"></div>', `<div id="root"></div>\n    <div id="enamad-static" style="display:flex;justify-content:center;padding:24px 0 112px"><div style="transform:scale(0.6);transform-origin:center top">${enamadHtml()}</div></div>`);
   fs.mkdirSync(path.join(dist, l.code), { recursive: true });
   fs.writeFileSync(path.join(dist, l.code, 'index.html'), html);
 }
