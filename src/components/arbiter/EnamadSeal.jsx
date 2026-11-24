@@ -17,5 +17,9 @@ export default function EnamadSeal() {
   }, [lang]);
 
   if (lang !== 'fa' || staticSeal) return null;
-  return <div className="text-center pt-4 pb-28" dangerouslySetInnerHTML={{ __html: enamadHtml() }} />; // fixed text from src/lib/enamad.js, no user input
+  return (
+    <div className="flex justify-center pb-28 pt-6">
+      <div style={{ transform: 'scale(0.6)', transformOrigin: 'center top' }} dangerouslySetInnerHTML={{ __html: enamadHtml() }} />
+    </div>
+  ); // fixed text from src/lib/enamad.js, no user input
 }
