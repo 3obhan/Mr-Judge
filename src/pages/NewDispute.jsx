@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { createDispute } from '@/lib/localStore';
-import { fetchCredits, getCachedCredits, spendCredit, refundCredit } from '@/lib/account';
+import { fetchCredits, getCachedCredits, spendCredit, refundCredit, completeCredit } from '@/lib/account';
 import { createPageUrl } from "@/utils";
 import { judgeDispute } from '@/lib/judge';
 import { clearDraft } from '@/lib/draft';
@@ -70,6 +70,8 @@ export default function NewDispute() {
         language: formData.language,
         status: 'analyzed'
       });
+
+      await completeCredit(ticket);
 
       clearDraft();
 
