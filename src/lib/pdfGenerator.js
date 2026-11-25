@@ -54,6 +54,8 @@ export async function generateVerdictPdf(data, language = 'en') {
     responsibility: 'عوامل مؤثر در تعیین مسئولیت',
     principle: 'اصل راهنمای ارزیابی',
     confidence: 'میزان اطمینان',
+    statementA: 'متن کامل اظهارات طرف اول',
+    statementB: 'متن کامل اظهارات طرف دوم',
     disclaimer: 'این گزارش حاصل تحلیل هوش مصنوعی بر پایه اطلاعات ارائه‌شده است؛ حکم دادگاه رسمی یا مشاوره حقوقی محسوب نمی‌شود.'
   } : {
     title: 'FINAL DISPUTE ASSESSMENT',
@@ -83,6 +85,8 @@ export async function generateVerdictPdf(data, language = 'en') {
     responsibility: 'RESPONSIBILITY FACTORS',
     principle: 'GUIDING PRINCIPLE',
     confidence: 'CONFIDENCE',
+    statementA: 'PARTY A — FULL STATEMENT',
+    statementB: 'PARTY B — FULL STATEMENT',
     disclaimer: 'This AI-assisted report is based on the information provided. It is not a court judgment or formal legal advice.'
   };
 
@@ -95,18 +99,20 @@ export async function generateVerdictPdf(data, language = 'en') {
   const analysis = data.analysis || {};
 
   const sections = [
+    textSection(t.statementA, data.personA_statement),
+    textSection(t.statementB, data.personB_statement),
     textSection(t.summary, data.executive_summary || data.explanation),
     textSection(t.reasoning, data.reasoning),
     textSection(t.settlement, data.settlement),
     listSection(t.claimsA, analysis.claims_a),
     listSection(t.claimsB, analysis.claims_b),
-    textSection(t.strongestA, data.strongest_argument_a),
-    textSection(t.strongestB, data.strongest_argument_b),
-    textSection(t.weaknessA, data.main_weakness_a),
-    textSection(t.weaknessB, data.main_weakness_b),
-    textSection(t.scope, data.scope_analysis),
-    textSection(t.causal, data.causal_analysis),
-    textSection(t.proportionality, data.proportionality_analysis),
+    textSection(t.strongestA, analysis.strongest_argument_a),
+    textSection(t.strongestB, analysis.strongest_argument_b),
+    textSection(t.weaknessA, analysis.main_weakness_a),
+    textSection(t.weaknessB, analysis.main_weakness_b),
+    textSection(t.scope, analysis.scope_analysis),
+    textSection(t.causal, analysis.causal_analysis),
+    textSection(t.proportionality, analysis.proportionality_analysis),
     listSection(t.agreed, analysis.agreed_points),
     listSection(t.disputed, analysis.disputed_facts),
     listSection(t.contradictions, analysis.contradictions),
@@ -114,13 +120,14 @@ export async function generateVerdictPdf(data, language = 'en') {
     listSection(t.evidenceB, analysis.evidence_b),
     listSection(t.unknowns, analysis.unknowns),
     listSection(t.responsibility, analysis.responsibility_factors),
-    textSection(t.principle, data.governing_principle)
+    textSection(t.principle, data.governing_principle),
+    textSection(t.confidence, data.confidence)
   ].filter(Boolean);
 
   const pageStyle = `
     width:794px;height:1123px;box-sizing:border-box;padding:54px 62px 48px;
     display:flex;flex-direction:column;gap:12px;overflow:hidden;
-    color:#151515;background:rgba(255,255,255,.94);
+    color:#151515;background:transparent;
     font-family:${isFa ? "'Vazirmatn',Tahoma,sans-serif" : "Arial,Helvetica,sans-serif"};
   `;
   const makePage = (pageNumber) => {
@@ -160,7 +167,7 @@ export async function generateVerdictPdf(data, language = 'en') {
 
   const makeCard = (section) => {
     const card = document.createElement('section');
-    card.style.cssText = 'padding:9px 12px 10px;background:rgba(255,255,255,.97);border:1px solid #d4d4d4;break-inside:avoid';
+    card.style.cssText = 'padding:9px 12px 10px;background:rgba(255,255,255,.72);border:1px solid rgba(212,212,212,.9);break-inside:avoid';
     card.innerHTML = `
       <div style="font:800 10px Arial,sans-serif;color:#171717;border-bottom:1px solid #b08d32;padding-bottom:5px;margin-bottom:7px">${section.title}</div>
       <div class="report-body" style="font-size:9.5px;line-height:1.65;text-align:justify;color:#222">${section.html}</div>`;
@@ -184,7 +191,7 @@ export async function generateVerdictPdf(data, language = 'en') {
       let stack = page.querySelector('.report-sections');
       const card = makeCard(section);
       stack.appendChild(card);
-      if (page.scrollHeight > 1123 && stack.children.length > 1) {
+      if (stack.scrollHeight > stack.clientHeight + 2 && stack.children.length > 1) {
         stack.removeChild(card);
         page = makePage(pages.length + 1);
         pages.push(page);
