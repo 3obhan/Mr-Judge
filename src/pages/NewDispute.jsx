@@ -62,6 +62,11 @@ export default function NewDispute() {
         personB_score: result.personB_score,
         verdict: result.verdict,
         explanation: result.explanation,
+        executive_summary: result.executive_summary,
+        reasoning: result.reasoning,
+        settlement: result.settlement,
+        governing_principle: result.governing_principle,
+        confidence: result.confidence,
         language: formData.language,
         status: 'analyzed'
       });
