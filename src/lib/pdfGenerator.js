@@ -1,122 +1,191 @@
 import { getLanguage } from '@/locales';
 
-const SEAL_URL = `${import.meta.env.BASE_URL}seal.png`;
 const digits = (value, lang) => lang === 'fa'
   ? String(value).replace(/[0-9]/g, (d) => '۰۱۲۳۴۵۶۷۸۹'[Number(d)])
   : String(value);
+
 const escapeHtml = (value) => String(value ?? '')
   .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
   .replace(/"/g, '&quot;').replace(/'/g, '&#39;')
   .replace(/\r?\n/g, '<br>');
+
 const excerpt = (value, max) => {
   const text = String(value || '').trim().replace(/\s+/g, ' ');
   return escapeHtml(text.length > max ? `${text.slice(0, max - 1)}…` : text || '—');
 };
 
-/** Render a single-page A4 decree inspired by Dadgar's formal black-and-gold layout. */
+/**
+ * Places a transparent, structured verdict layout over the user's PDF stationery.
+ * The supplied PDF remains the actual document background; all dynamic text is
+ * rendered by the browser so Persian shaping and RTL text remain correct.
+ */
 export async function generateVerdictPdf(data, language = 'en') {
   const info = getLanguage(language);
   const isFa = language === 'fa';
   const dir = info.dir || (isFa ? 'rtl' : 'ltr');
   const labels = isFa ? {
-    tribunal: 'دیوان داوری هوشمند', title: 'دادنامه نهایی اختلاف',
-    file: 'شناسه پرونده', issued: 'تاریخ صدور', page: 'نسخه رسمی · برگ ۱ از ۱',
-    result: 'نتیجه داوری', a: 'طرف اول', b: 'طرف دوم', score: 'امتیاز حقانیت',
-    claims: 'خلاصه اظهارات طرفین', summary: 'ماده ۱ ـ خلاصه رأی',
-    reasoning: 'ماده ۲ ـ مبانی استدلال و ارزیابی ادله',
-    settlement: 'ماده ۳ ـ راهکار پیشنهادی حل اختلاف',
-    principle: 'قاعده حاکم', confidence: 'میزان اطمینان تحلیل',
-    seal: 'ممهور به نشان آقای قاضی',
-    disclaimer: 'این سند حاصل تحلیل هوش مصنوعی بر پایه اطلاعات ارائه‌شده از سوی طرفین است؛ حکم دادگاه رسمی یا مشاوره حقوقی محسوب نمی‌شود.'
+    brand: 'MR JUDGE',
+    title: 'گزارش نهایی ارزیابی اختلاف',
+    file: 'شناسه پرونده',
+    issued: 'تاریخ صدور',
+    result: 'نتیجه ارزیابی',
+    partyA: 'طرف اول',
+    partyB: 'طرف دوم',
+    score: 'امتیاز ارزیابی',
+    claims: 'اظهارات طرفین',
+    summary: 'بخش اول ـ خلاصه نتیجه',
+    reasoning: 'بخش دوم ـ استدلال و ارزیابی',
+    settlement: 'بخش سوم ـ پیشنهاد حل اختلاف',
+    principle: 'اصل راهنما',
+    confidence: 'میزان اطمینان',
+    disclaimer: 'این گزارش حاصل تحلیل هوش مصنوعی بر پایه اطلاعات ارائه‌شده است و حکم دادگاه رسمی یا مشاوره حقوقی محسوب نمی‌شود.'
   } : {
-    tribunal: 'RATIONAL ARBITRATION TRIBUNAL', title: 'FINAL DISPUTE DECREE',
-    file: 'CASE REFERENCE', issued: 'ISSUED', page: 'OFFICIAL COPY · PAGE 1 OF 1',
-    result: 'FINAL FINDING', a: 'PARTY A', b: 'PARTY B', score: 'JUSTIFICATION SCORE',
-    claims: 'PARTIES’ STATEMENTS', summary: 'ARTICLE I — EXECUTIVE RULING',
-    reasoning: 'ARTICLE II — REASONING & EVIDENCE',
-    settlement: 'ARTICLE III — PROPOSED SETTLEMENT',
-    principle: 'GOVERNING PRINCIPLE', confidence: 'ASSESSMENT CONFIDENCE',
-    seal: 'MR JUDGE · OFFICIAL SEAL',
-    disclaimer: 'This document is an AI-assisted assessment based on information supplied by the parties. It is not a court judgment or formal legal advice.'
+    brand: 'MR JUDGE',
+    title: 'FINAL DISPUTE ASSESSMENT',
+    file: 'CASE REFERENCE',
+    issued: 'ISSUED',
+    result: 'ASSESSMENT RESULT',
+    partyA: 'PARTY A',
+    partyB: 'PARTY B',
+    score: 'ASSESSMENT SCORE',
+    claims: 'PARTIES’ STATEMENTS',
+    summary: 'SECTION I — EXECUTIVE SUMMARY',
+    reasoning: 'SECTION II — REASONING & ASSESSMENT',
+    settlement: 'SECTION III — PROPOSED RESOLUTION',
+    principle: 'GUIDING PRINCIPLE',
+    confidence: 'CONFIDENCE',
+    disclaimer: 'This report is an AI-assisted assessment based on the information provided. It is not a court judgment or formal legal advice.'
   };
+
   const now = new Date();
   const date = now.toLocaleDateString(info.locale, { year: 'numeric', month: 'long', day: 'numeric' });
   const caseCode = `MJ-${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}${String(now.getDate()).padStart(2, '0')}-${String(now.getTime()).slice(-5)}`;
   const scoreA = Math.max(0, Math.min(100, Math.round(Number(data.personA_score) || 0)));
   const scoreB = Math.max(0, Math.min(100, Math.round(Number(data.personB_score) || 0)));
-  const winner = scoreA - scoreB > 10 ? labels.a : scoreB - scoreA > 10 ? labels.b : (isFa ? 'حقانیت نزدیک به هم' : 'Shared / balanced merit');
-  const template = `
-  <main dir="${dir}" style="width:794px;height:1123px;padding:30px;background:#fff;color:#111;font-family:${isFa ? "'Vazirmatn',Tahoma,sans-serif" : "Georgia,'Times New Roman',serif"};box-sizing:border-box;display:flex;flex-direction:column;position:relative;overflow:hidden">
-    <div style="position:absolute;inset:0;border:2px solid #171717;margin:12px;pointer-events:none"></div>
-    <div style="position:absolute;inset:5px;border:1px solid #b08d32;margin:12px;pointer-events:none"></div>
-    <header style="display:flex;justify-content:space-between;align-items:center;border-bottom:2px solid #171717;padding:16px 18px 12px;gap:16px">
-      <div style="display:flex;align-items:center;gap:12px">
-        <img src="${SEAL_URL}" style="width:58px;height:58px;object-fit:contain" />
-        <div><div style="font:800 11px Arial;color:#947321;letter-spacing:1px">${labels.tribunal}</div><div style="font-weight:900;font-size:19px;margin-top:5px">MR JUDGE</div></div>
-      </div>
-      <div style="text-align:${isFa ? 'left' : 'right'};font:11px/1.8 Arial;color:#444">
-        <div>${labels.file}: <b style="color:#111">${digits(caseCode, language)}</b></div>
-        <div>${labels.issued}: <b style="color:#111">${escapeHtml(date)}</b></div>
-        <div style="color:#947321;font-weight:bold">${labels.page}</div>
-      </div>
-    </header>
-    <section style="text-align:center;padding:13px 0 11px;border-bottom:1px solid #ccc">
-      <div style="font:700 10px Arial;color:#92701e;letter-spacing:2px">${labels.result}</div>
-      <h1 style="font-size:22px;margin:6px 0 0;font-weight:900">${excerpt(data.verdict, 100)}</h1>
-    </section>
-    <section style="display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 14px;border:1px solid #171717;background:#fffdf4;margin-top:12px">
-      <div><div style="font:700 10px Arial;color:#666">${labels.result}</div><div style="font-weight:900;font-size:15px;margin-top:3px">${escapeHtml(winner)}</div></div>
-      <div style="display:flex;gap:16px;font:700 13px Arial;white-space:nowrap">
-        <span>${labels.a}: <b>${digits(scoreA, language)}%</b></span>
-        <span style="color:#b08d32">|</span>
-        <span>${labels.b}: <b>${digits(scoreB, language)}%</b></span>
-      </div>
-    </section>
-    <section style="margin-top:12px">
-      <div style="font:800 10px Arial;color:#92701e;margin-bottom:6px">${labels.claims}</div>
-      <div style="display:grid;grid-template-columns:1fr 1fr;border:1px solid #ccc;background:#fafafa">
-        <div style="padding:9px 11px;border-${isFa ? 'left' : 'right'}:1px solid #ccc">
-          <b style="font-size:11px">${labels.a}</b><p style="font-size:10.5px;line-height:1.55;margin:5px 0 0;text-align:justify">${excerpt(data.personA_statement, 210)}</p>
+  const prevailing = scoreA - scoreB > 10
+    ? labels.partyA
+    : scoreB - scoreA > 10
+      ? labels.partyB
+      : (isFa ? 'حقانیت نزدیک به هم' : 'Balanced assessment');
+
+  const html = `
+    <main dir="${dir}" style="
+      width:794px;height:1123px;padding:72px 62px 58px;box-sizing:border-box;
+      display:flex;flex-direction:column;gap:11px;overflow:hidden;
+      color:#151515;background:transparent;
+      font-family:${isFa ? "'Vazirmatn',Tahoma,sans-serif" : "Arial,Helvetica,sans-serif"};
+    ">
+      <header style="display:flex;justify-content:space-between;align-items:flex-start;gap:18px;padding:8px 12px 12px;border-bottom:2px solid #171717;background:rgba(255,255,255,.94)">
+        <div>
+          <div style="font:800 10px Arial,sans-serif;letter-spacing:1.5px;color:#9a7829">${labels.brand}</div>
+          <div style="font-size:19px;font-weight:900;margin-top:5px">${labels.title}</div>
         </div>
-        <div style="padding:9px 11px"><b style="font-size:11px">${labels.b}</b><p style="font-size:10.5px;line-height:1.55;margin:5px 0 0;text-align:justify">${excerpt(data.personB_statement, 210)}</p></div>
-      </div>
-    </section>
-    <section style="margin-top:12px">
-      <div style="font:800 11px Arial;color:#111;border-bottom:1px solid #b08d32;padding-bottom:4px">${labels.summary}</div>
-      <p style="font-size:11.5px;line-height:1.65;text-align:justify;margin:6px 0 0">${excerpt(data.executive_summary || data.explanation, 360)}</p>
-    </section>
-    <section style="margin-top:10px">
-      <div style="font:800 11px Arial;color:#111;border-bottom:1px solid #b08d32;padding-bottom:4px">${labels.reasoning}</div>
-      <p style="font-size:11px;line-height:1.65;text-align:justify;margin:6px 0 0">${excerpt(data.reasoning || data.explanation, 500)}</p>
-    </section>
-    <section style="margin-top:10px">
-      <div style="font:800 11px Arial;color:#111;border-bottom:1px solid #b08d32;padding-bottom:4px">${labels.settlement}</div>
-      <p style="font-size:11px;line-height:1.6;text-align:justify;margin:6px 0 0">${excerpt(data.settlement, 250)}</p>
-    </section>
-    <div style="margin-top:10px;padding:7px 10px;border:1px solid #ccc;background:#fafafa;font-size:10px;line-height:1.5">
-      <b>${labels.principle}:</b> ${excerpt(data.governing_principle, 180)}
-      <span style="margin-inline-start:12px"><b>${labels.confidence}:</b> ${escapeHtml(data.confidence || 'medium')}</span>
-    </div>
-    <footer style="margin-top:auto;border-top:2px solid #171717;padding:10px 12px 8px;display:flex;align-items:center;justify-content:space-between;gap:16px">
-      <div style="font-size:8.5px;line-height:1.55;color:#555;max-width:78%;text-align:justify">${labels.disclaimer}<br><b style="color:#111">MR JUDGE · AI DISPUTE ANALYSIS</b></div>
-      <div style="text-align:center"><img src="${SEAL_URL}" style="width:58px;height:58px;object-fit:contain"/><div style="font:700 8px Arial;color:#92701e">${labels.seal}</div></div>
-    </footer>
-  </main>`;
+        <div style="text-align:${isFa ? 'left' : 'right'};font:10px/1.8 Arial,sans-serif;color:#444;white-space:nowrap">
+          <div>${labels.file}: <b style="color:#111">${digits(caseCode, language)}</b></div>
+          <div>${labels.issued}: <b style="color:#111">${escapeHtml(date)}</b></div>
+        </div>
+      </header>
+
+      <section style="padding:11px 14px;border:1px solid #171717;background:rgba(255,253,245,.96);display:flex;justify-content:space-between;align-items:center;gap:12px">
+        <div>
+          <div style="font:700 9px Arial,sans-serif;color:#8d6d22;margin-bottom:4px">${labels.result}</div>
+          <div style="font-size:15px;font-weight:900">${excerpt(data.verdict, 110)}</div>
+          <div style="font-size:10px;color:#555;margin-top:4px">${isFa ? 'طرف دارای امتیاز بالاتر:' : 'Higher assessment score:'} <b style="color:#111">${escapeHtml(prevailing)}</b></div>
+        </div>
+        <div style="display:flex;gap:12px;font:700 12px Arial,sans-serif;white-space:nowrap">
+          <span>${labels.partyA}: <b>${digits(scoreA, language)}٪</b></span>
+          <span style="color:#b08d32">|</span>
+          <span>${labels.partyB}: <b>${digits(scoreB, language)}٪</b></span>
+        </div>
+      </section>
+
+      <section style="background:rgba(255,255,255,.95);border:1px solid #d4d4d4;padding:9px 11px">
+        <div style="font:800 10px Arial,sans-serif;color:#92701e;margin-bottom:7px">${labels.claims}</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;border:1px solid #ddd;background:rgba(250,250,250,.94)">
+          <div style="padding:8px 10px;border-${isFa ? 'left' : 'right'}:1px solid #ddd">
+            <b style="font-size:10px">${labels.partyA}</b>
+            <p style="font-size:9.2px;line-height:1.55;margin:5px 0 0;text-align:justify">${excerpt(data.personA_statement, 230)}</p>
+          </div>
+          <div style="padding:8px 10px">
+            <b style="font-size:10px">${labels.partyB}</b>
+            <p style="font-size:9.2px;line-height:1.55;margin:5px 0 0;text-align:justify">${excerpt(data.personB_statement, 230)}</p>
+          </div>
+        </div>
+      </section>
+
+      <section style="padding:9px 12px 10px;background:rgba(255,255,255,.95);border:1px solid #d4d4d4">
+        <div style="font:800 10px Arial,sans-serif;color:#171717;border-bottom:1px solid #b08d32;padding-bottom:5px;margin-bottom:6px">${labels.summary}</div>
+        <p style="font-size:10px;line-height:1.65;text-align:justify;margin:0">${excerpt(data.executive_summary || data.explanation, 420)}</p>
+      </section>
+
+      <section style="padding:9px 12px 10px;background:rgba(255,255,255,.95);border:1px solid #d4d4d4">
+        <div style="font:800 10px Arial,sans-serif;color:#171717;border-bottom:1px solid #b08d32;padding-bottom:5px;margin-bottom:6px">${labels.reasoning}</div>
+        <p style="font-size:9.8px;line-height:1.65;text-align:justify;margin:0">${excerpt(data.reasoning || data.explanation, 520)}</p>
+      </section>
+
+      <section style="padding:9px 12px 10px;background:rgba(255,255,255,.95);border:1px solid #d4d4d4">
+        <div style="font:800 10px Arial,sans-serif;color:#171717;border-bottom:1px solid #b08d32;padding-bottom:5px;margin-bottom:6px">${labels.settlement}</div>
+        <p style="font-size:9.8px;line-height:1.6;text-align:justify;margin:0">${excerpt(data.settlement, 300)}</p>
+      </section>
+
+      <section style="padding:8px 11px;border:1px solid #d4d4d4;background:rgba(250,250,250,.96);font-size:9px;line-height:1.55">
+        <b>${labels.principle}:</b> ${excerpt(data.governing_principle, 190)}
+        <span style="margin-inline-start:12px"><b>${labels.confidence}:</b> ${escapeHtml(data.confidence || '—')}</span>
+      </section>
+
+      <footer style="margin-top:auto;padding:9px 12px 0;border-top:2px solid #171717;background:rgba(255,255,255,.94);font-size:8px;line-height:1.55;color:#555;text-align:justify">
+        ${labels.disclaimer}
+        <div style="font:700 8px Arial,sans-serif;color:#92701e;margin-top:4px;letter-spacing:.5px">MR JUDGE · AI DISPUTE ANALYSIS</div>
+      </footer>
+    </main>`;
 
   const container = document.createElement('div');
-  container.style.cssText = 'position:fixed;left:-10000px;top:0;width:794px;background:#fff;z-index:-1';
-  container.innerHTML = template;
+  container.style.cssText = 'position:fixed;left:-10000px;top:0;width:794px;background:transparent;z-index:-1;pointer-events:none';
+  container.innerHTML = html;
   document.body.appendChild(container);
+
   try {
-    const images = [...container.querySelectorAll('img')];
-    await Promise.all(images.map((img) => img.complete ? Promise.resolve() : new Promise((resolve) => { img.onload = resolve; img.onerror = resolve; })));
     if (document.fonts?.ready) await document.fonts.ready;
     const { default: html2canvas } = await import('html2canvas');
-    const canvas = await html2canvas(container.firstElementChild, { scale: 2, useCORS: true, backgroundColor: '#fff', width: 794, height: 1123, windowWidth: 794, windowHeight: 1123, logging: false });
-    const { default: jsPDF } = await import('jspdf');
-    const pdf = new jsPDF('p', 'mm', 'a4');
-    pdf.addImage(canvas.toDataURL('image/png'), 'PNG', 0, 0, 210, 297);
-    pdf.save(`mr-judge-decree-${info.code}.pdf`);
+    const pageElement = container.firstElementChild;
+    const canvas = await html2canvas(pageElement, {
+      scale: 2,
+      useCORS: true,
+      backgroundColor: null,
+      width: 794,
+      height: 1123,
+      windowWidth: 794,
+      windowHeight: 1123,
+      logging: false
+    });
+
+    const templateUrl = `${import.meta.env.BASE_URL}templates/report-template.pdf`;
+    const templateResponse = await fetch(templateUrl);
+    if (!templateResponse.ok) {
+      throw new Error(`PDF template could not be loaded (${templateResponse.status}).`);
+    }
+
+    const { PDFDocument } = await import('pdf-lib');
+    const templateBytes = await templateResponse.arrayBuffer();
+    const pdfDoc = await PDFDocument.load(templateBytes);
+    const pages = pdfDoc.getPages();
+    if (!pages.length) throw new Error('The PDF template has no pages.');
+
+    const page = pages[0];
+    const { width, height } = page.getSize();
+    const overlay = await pdfDoc.embedPng(canvas.toDataURL('image/png'));
+    page.drawImage(overlay, { x: 0, y: 0, width, height });
+
+    const outputBytes = await pdfDoc.save();
+    const blob = new Blob([outputBytes], { type: 'application/pdf' });
+    const objectUrl = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = objectUrl;
+    link.download = `mr-judge-report-${info.code}.pdf`;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    URL.revokeObjectURL(objectUrl);
   } finally {
     container.remove();
   }
