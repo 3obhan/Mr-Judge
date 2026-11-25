@@ -206,9 +206,12 @@ r = await call('gemini', { model: 'gemini-3.8-flash', body: { contents: [] }, ki
 r = await call('gemini', { model: 'gemini-3.8-flash', body: { contents: [] }, ticket: 'a'.repeat(32) }, { key }); assert.equal(r.status, 402);
 r = await call('gemini', { model: 'evil-model', body: { contents: [] }, ticket: t1 }, { key }); assert.equal(r.status, 400);
 r = await call('gemini', { model: 'gemini-3.8-flash', body: { contents: [{}] }, ticket: t1 }, { key }); assert.equal(r.status, 200);
-r = await call('credits', { action: 'refund', ticket: t1 }, { key }); assert.equal(r.status, 409);
-r = await call('gemini', { model: 'gemini-3.8-flash', body: { contents: [{}] }, ticket: t1 }, { key }); assert.equal(r.status, 200);
-r = await call('gemini', { model: 'gemini-3.8-flash', body: { contents: [{}] }, ticket: t1 }, { key }); assert.equal(r.status, 409);
+r = await call('credits', { action: 'refund', ticket: t1 }, { key }); assert.equal(r.status, 200, 'a provider response alone does not consume a credit before delivery');
+r = await call('credits', { action: 'complete', ticket: t1 }, { key }); assert.equal(r.status, 404, 'a refunded ticket cannot be completed');
+const t1b = (await call('credits', { action: 'spend' }, { key })).body.ticket;
+r = await call('gemini', { model: 'gemini-3.8-flash', body: { contents: [{}] }, ticket: t1b }, { key }); assert.equal(r.status, 200);
+r = await call('credits', { action: 'complete', ticket: t1b }, { key }); assert.equal(r.status, 200);
+r = await call('credits', { action: 'refund', ticket: t1b }, { key }); assert.equal(r.status, 409, 'completed analysis cannot be refunded');
 r = await call('credits', { action: 'spend' }, { key }); assert.equal(r.body.credits, 0); const t2 = r.body.ticket;
 r = await call('credits', { action: 'spend' }, { key }); assert.equal(r.status, 402); assert.equal(r.body.error, 'NO_CREDITS');
 assert.equal(await credits(key), 0);
@@ -231,7 +234,7 @@ r = await call('gemini', gem({ ticket: tk }), { key: fbKey });
 assert.equal(r.status, 200, 'Gemini out of quota -> the backup answers'); assert.equal(r.body.candidates[0].content.parts[0].text, '{"from":"backup"}', 'answer comes back in Gemini format');
 assert.equal(groqCalls[0].auth, 'Bearer fb-key'); assert.equal(groqCalls[0].json.model, 'llama-3.3-70b-versatile'); assert.deepEqual(groqCalls[0].json.response_format, { type: 'json_object' });
 assert.match(groqCalls[0].json.messages[0].content, /judge this[\s\S]*"from" \(string\): who answered/, 'the JSON fields are described to the backup model');
-assert.equal((await call('credits', { action: 'refund', ticket: tk }, { key: fbKey })).status, 409, 'an answer from the backup also spends the credit');
+assert.equal((await call('credits', { action: 'refund', ticket: tk }, { key: fbKey })).status, 200, 'backup response is refundable until the complete analysis is delivered');
 tk = (await call('credits', { action: 'spend' }, { key: fbKey })).body.ticket;
 geminiMode = '503'; groqCalls.length = 0;
 r = await call('gemini', gem({ ticket: tk }), { key: fbKey });
@@ -244,7 +247,9 @@ assert.equal(r.status, 400, 'a plain bad request is not sent to the backup'); as
 geminiMode = 'location'; r = await call('gemini', gem({ ticket: tk }), { key: fbKey }); assert.equal(r.status, 200, 'region block -> backup'); assert.equal(groqCalls.length, 1);
 geminiMode = 'ok'; process.env.AI_PRIMARY = 'fallback'; geminiCalls = 0;
 r = await call('gemini', gem({ ticket: tk }), { key: fbKey }); assert.equal(r.status, 200); assert.equal(geminiCalls, 0, 'AI_PRIMARY=fallback never calls Gemini');
-r = await call('gemini', gem({ ticket: tk }), { key: fbKey }); assert.equal(r.status, 409, 'the ticket allows two answers only (the region one + this one)');
+r = await call('gemini', gem({ ticket: tk }), { key: fbKey }); assert.equal(r.status, 200, 'ticket can be used for the single-request analysis while it remains pending');
+r = await call('credits', { action: 'complete', ticket: tk }, { key: fbKey }); assert.equal(r.status, 200);
+r = await call('credits', { action: 'refund', ticket: tk }, { key: fbKey }); assert.equal(r.status, 409, 'completed fallback analysis cannot be refunded');
 delete process.env.AI_PRIMARY;
 // voice -> text
 groqCalls.length = 0; geminiMode = '429';
