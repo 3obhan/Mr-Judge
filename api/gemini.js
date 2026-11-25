@@ -25,7 +25,7 @@ import { fallbackConfigured, shouldFallback, runFallback } from './_lib/fallback
 const ALLOWED_MODELS = (process.env.GEMINI_ALLOWED_MODELS || 'gemini-3.8-flash,gemini-3.5-flash-lite')
   .split(',').map((s) => s.trim()).filter(Boolean);
 
-const MAX_OK_CALLS = 2;
+const MAX_TICKET_ATTEMPTS = 8;
 const TICKET_TTL_SECONDS = 900;
 const STT_PER_DAY = Number(process.env.STT_PER_DAY || 60);
 
@@ -62,8 +62,11 @@ export default async function handler(req, res) {
     } else {
       if (!/^[a-f0-9]{32}$/.test(String(ticket || ''))) return res.status(402).json({ error: 'NO_TICKET' });
       if ((await cmd('GET', `t:${ticket}`)) !== user.uid) return res.status(402).json({ error: 'INVALID_TICKET' });
-      if ((Number(await cmd('GET', `tc:${ticket}`)) || 0) >= MAX_OK_CALLS) return res.status(409).json({ error: 'TICKET_USED' });
-      ticketKey = `tc:${ticket}`;
+      if ((Number(await cmd('GET', `tc:${ticket}`)) || 0) > 0) return res.status(409).json({ error: 'TICKET_USED' });
+      ticketKey = `ta:${ticket}`;
+      const attempts = Number(await cmd('INCR', ticketKey));
+      if (attempts === 1) await cmd('EXPIRE', ticketKey, TICKET_TTL_SECONDS);
+      if (attempts > MAX_TICKET_ATTEMPTS) return res.status(409).json({ error: 'TICKET_ATTEMPTS_EXCEEDED' });
     }
 
     // 1) Gemini (unless the backup is set as primary)
@@ -102,11 +105,6 @@ export default async function handler(req, res) {
     }
     if (!out) return res.status(502).json({ error: 'Could not reach the AI' });
 
-    if (out.status >= 200 && out.status < 300 && ticketKey) {
-      // Remember that the AI really answered, so this credit can no longer be refunded
-      await cmd('INCR', ticketKey);
-      await cmd('EXPIRE', ticketKey, TICKET_TTL_SECONDS);
-    }
     res.setHeader('Content-Type', 'application/json');
     return res.status(out.status).send(out.text);
   } catch (e) {
