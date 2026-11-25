@@ -100,7 +100,7 @@ const isTransient = (err) => {
   if (err?.network) return true;
   const detail = String(err?.detail || err?.message || '');
   if (/api key|referer|referrer|quota|billing|DAILY_LIMIT|NOT_CONFIGURED|GEMINI_API_KEY/i.test(detail)) return false; // (setup problems are not temporary)
-  return [429, 500, 502, 504].includes(err?.status);
+  return [429, 500, 502, 503, 504].includes(err?.status);
 };
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
