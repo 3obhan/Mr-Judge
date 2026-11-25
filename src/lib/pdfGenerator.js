@@ -1,215 +1,123 @@
-import { getLanguage, translate } from '@/locales';
+import { getLanguage } from '@/locales';
 
-const SEAL_URL = `${import.meta.env.BASE_URL}seal.png`; // put your seal image at public/seal.png
+const SEAL_URL = `${import.meta.env.BASE_URL}seal.png`;
+const digits = (value, lang) => lang === 'fa'
+  ? String(value).replace(/[0-9]/g, (d) => '۰۱۲۳۴۵۶۷۸۹'[Number(d)])
+  : String(value);
+const escapeHtml = (value) => String(value ?? '')
+  .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+  .replace(/"/g, '&quot;').replace(/'/g, '&#39;')
+  .replace(/\r?\n/g, '<br>');
+const excerpt = (value, max) => {
+  const text = String(value || '').trim().replace(/\s+/g, ' ');
+  return escapeHtml(text.length > max ? `${text.slice(0, max - 1)}…` : text || '—');
+};
 
-// Convert Western digits to Persian digits
-function toPersianDigits(str) {
-  const persianDigits = ['۰', '۱', '۲', '۳', '۴', '۵', '۶', '۷', '۸', '۹'];
-  return String(str).replace(/[0-9]/g, d => persianDigits[parseInt(d, 10)]);
-}
-
-function localizeNumber(value, language) {
-  const num = Math.round(value || 0);
-  return language === 'fa' ? toPersianDigits(num) : String(num);
-}
-
-// Escape HTML to prevent injection / broken layout
-function escapeHtml(text) {
-  if (!text) return '';
-  return String(text)
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#039;')
-    .replace(/\n/g, '<br/>');
-}
-
-// Truncate text to a max character count with ellipsis
-function truncate(text, maxLen) {
-  if (!text) return '';
-  const str = String(text);
-  if (str.length <= maxLen) return str;
-  return str.substring(0, maxLen - 1).trimEnd() + '…';
-}
-
-/**
- * Generate a beautiful one-page PDF verdict report with the gold seal at the bottom.
- * Includes statements from both parties.
- * @param {Object} data - { personA_score, personB_score, verdict, explanation, personA_statement, personB_statement }
- * @param {string} language - language code of the verdict (en, fa, ar, ...)
- */
+/** Render a single-page A4 decree inspired by Dadgar's formal black-and-gold layout. */
 export async function generateVerdictPdf(data, language = 'en') {
   const info = getLanguage(language);
-  const isFa = info.dir === 'rtl'; // "isFa" below really means: right-to-left layout (Persian, Arabic)
-  const dir = info.dir;
-  const fontFamily = isFa
-    ? "'Tahoma', 'Vazirmatn', 'Segoe UI', sans-serif"
-    : "'Georgia', 'Times New Roman', 'Segoe UI', serif";
-
-  const t = Object.fromEntries(
-    ['title', 'verdict', 'analysis', 'personA', 'personB', 'statement', 'statementsSection', 'certified', 'date', 'mrJudge', 'score']
-      .map((k) => [k, translate(language, `pdf.${k}`)])
-  );
-  const dateStr = new Date().toLocaleDateString(info.locale, {
-    year: 'numeric', month: 'long', day: 'numeric'
-  });
-
-  // Localize scores
-  const scoreA = localizeNumber(data.personA_score, language);
-  const scoreB = localizeNumber(data.personB_score, language);
-  const scoreLabel = t.score;
-
-  // Truncate statements to keep one-page fit (generous limits; layout is compact)
-  const MAX_STATEMENT_LEN = 600;
-  const stmtA = escapeHtml(truncate(data.personA_statement, MAX_STATEMENT_LEN));
-  const stmtB = escapeHtml(truncate(data.personB_statement, MAX_STATEMENT_LEN));
-  const verdictText = escapeHtml(data.verdict);
-  const explanationText = escapeHtml(truncate(data.explanation, 1200));
-
+  const isFa = language === 'fa';
+  const dir = info.dir || (isFa ? 'rtl' : 'ltr');
+  const labels = isFa ? {
+    tribunal: 'دیوان داوری هوشمند', title: 'دادنامه نهایی اختلاف',
+    file: 'شناسه پرونده', issued: 'تاریخ صدور', page: 'نسخه رسمی · برگ ۱ از ۱',
+    result: 'نتیجه داوری', a: 'طرف اول', b: 'طرف دوم', score: 'امتیاز حقانیت',
+    claims: 'خلاصه اظهارات طرفین', summary: 'ماده ۱ ـ خلاصه رأی',
+    reasoning: 'ماده ۲ ـ مبانی استدلال و ارزیابی ادله',
+    settlement: 'ماده ۳ ـ راهکار پیشنهادی حل اختلاف',
+    principle: 'قاعده حاکم', confidence: 'میزان اطمینان تحلیل',
+    seal: 'ممهور به نشان آقای قاضی',
+    disclaimer: 'این سند حاصل تحلیل هوش مصنوعی بر پایه اطلاعات ارائه‌شده از سوی طرفین است؛ حکم دادگاه رسمی یا مشاوره حقوقی محسوب نمی‌شود.'
+  } : {
+    tribunal: 'RATIONAL ARBITRATION TRIBUNAL', title: 'FINAL DISPUTE DECREE',
+    file: 'CASE REFERENCE', issued: 'ISSUED', page: 'OFFICIAL COPY · PAGE 1 OF 1',
+    result: 'FINAL FINDING', a: 'PARTY A', b: 'PARTY B', score: 'JUSTIFICATION SCORE',
+    claims: 'PARTIES’ STATEMENTS', summary: 'ARTICLE I — EXECUTIVE RULING',
+    reasoning: 'ARTICLE II — REASONING & EVIDENCE',
+    settlement: 'ARTICLE III — PROPOSED SETTLEMENT',
+    principle: 'GOVERNING PRINCIPLE', confidence: 'ASSESSMENT CONFIDENCE',
+    seal: 'MR JUDGE · OFFICIAL SEAL',
+    disclaimer: 'This document is an AI-assisted assessment based on information supplied by the parties. It is not a court judgment or formal legal advice.'
+  };
+  const now = new Date();
+  const date = now.toLocaleDateString(info.locale, { year: 'numeric', month: 'long', day: 'numeric' });
+  const caseCode = `MJ-${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}${String(now.getDate()).padStart(2, '0')}-${String(now.getTime()).slice(-5)}`;
+  const scoreA = Math.max(0, Math.min(100, Math.round(Number(data.personA_score) || 0)));
+  const scoreB = Math.max(0, Math.min(100, Math.round(Number(data.personB_score) || 0)));
+  const winner = scoreA - scoreB > 10 ? labels.a : scoreB - scoreA > 10 ? labels.b : (isFa ? 'حقانیت نزدیک به هم' : 'Shared / balanced merit');
   const template = `
-    <div dir="${dir}" style="width: 794px; height: 1123px; padding: 50px 50px; font-family: ${fontFamily}; background: #ffffff; display: flex; flex-direction: column; box-sizing: border-box; position: relative; overflow: hidden;">
-      <!-- Decorative top border -->
-      <div style="position: absolute; top: 0; left: 0; right: 0; height: 7px; background: linear-gradient(90deg, #1e293b 0%, #d4af37 50%, #1e293b 100%);"></div>
-
-      <!-- Ornamental corner accents -->
-      <div style="position: absolute; top: 20px; ${isFa ? 'right' : 'left'}: 20px; width: 40px; height: 40px; border-top: 2px solid #d4af37; border-${isFa ? 'right' : 'left'}: 2px solid #d4af37; opacity: 0.5;"></div>
-      <div style="position: absolute; top: 20px; ${isFa ? 'left' : 'right'}: 20px; width: 40px; height: 40px; border-top: 2px solid #d4af37; border-${isFa ? 'left' : 'right'}: 2px solid #d4af37; opacity: 0.5;"></div>
-
-      <!-- Header -->
-      <div style="text-align: center; margin-bottom: 4px; padding-top: 8px;">
-        <div style="font-size: 38px; font-weight: 700; color: #1e293b; letter-spacing: 3px;">${t.mrJudge}</div>
-        <div style="font-size: 13px; color: #94a3b8; margin-top: 6px; letter-spacing: 4px; text-transform: uppercase;">◆ ◆ ◆</div>
-        <div style="font-size: 16px; color: #475569; margin-top: 10px; letter-spacing: 1.5px; font-style: italic;">${t.title}</div>
-        <div style="width: 100px; height: 3px; background: linear-gradient(90deg, transparent, #d4af37, transparent); margin: 14px auto 0; border-radius: 2px;"></div>
+  <main dir="${dir}" style="width:794px;height:1123px;padding:30px;background:#fff;color:#111;font-family:${isFa ? "'Vazirmatn',Tahoma,sans-serif" : "Georgia,'Times New Roman',serif"};box-sizing:border-box;display:flex;flex-direction:column;position:relative;overflow:hidden">
+    <div style="position:absolute;inset:0;border:2px solid #171717;margin:12px;pointer-events:none"></div>
+    <div style="position:absolute;inset:5px;border:1px solid #b08d32;margin:12px;pointer-events:none"></div>
+    <header style="display:flex;justify-content:space-between;align-items:center;border-bottom:2px solid #171717;padding:16px 18px 12px;gap:16px">
+      <div style="display:flex;align-items:center;gap:12px">
+        <img src="${SEAL_URL}" style="width:58px;height:58px;object-fit:contain" />
+        <div><div style="font:800 11px Arial;color:#947321;letter-spacing:1px">${labels.tribunal}</div><div style="font-weight:900;font-size:19px;margin-top:5px">MR JUDGE</div></div>
       </div>
-
-      <!-- Date -->
-      <div style="text-align: center; font-size: 12px; color: #94a3b8; margin-bottom: 22px; letter-spacing: 0.5px;">
-        ${t.date}: ${dateStr}
+      <div style="text-align:${isFa ? 'left' : 'right'};font:11px/1.8 Arial;color:#444">
+        <div>${labels.file}: <b style="color:#111">${digits(caseCode, language)}</b></div>
+        <div>${labels.issued}: <b style="color:#111">${escapeHtml(date)}</b></div>
+        <div style="color:#947321;font-weight:bold">${labels.page}</div>
       </div>
-
-      <!-- Verdict Box -->
-      <div style="background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%); border: 1px solid #e2e8f0; ${isFa ? 'border-right' : 'border-left'}: 5px solid #d4af37; border-radius: 12px; padding: 20px 26px; margin-bottom: 20px; box-shadow: 0 1px 3px rgba(30,41,59,0.05);">
-        <div style="font-size: 10px; text-transform: uppercase; color: #94a3b8; margin-bottom: 10px; letter-spacing: 3px; font-weight: 700;">${t.verdict}</div>
-        <div style="font-size: 17px; font-weight: 500; color: #1e293b; line-height: 1.6;">${verdictText}</div>
+    </header>
+    <section style="text-align:center;padding:13px 0 11px;border-bottom:1px solid #ccc">
+      <div style="font:700 10px Arial;color:#92701e;letter-spacing:2px">${labels.result}</div>
+      <h1 style="font-size:22px;margin:6px 0 0;font-weight:900">${excerpt(data.verdict, 100)}</h1>
+    </section>
+    <section style="display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 14px;border:1px solid #171717;background:#fffdf4;margin-top:12px">
+      <div><div style="font:700 10px Arial;color:#666">${labels.result}</div><div style="font-weight:900;font-size:15px;margin-top:3px">${escapeHtml(winner)}</div></div>
+      <div style="display:flex;gap:16px;font:700 13px Arial;white-space:nowrap">
+        <span>${labels.a}: <b>${digits(scoreA, language)}%</b></span>
+        <span style="color:#b08d32">|</span>
+        <span>${labels.b}: <b>${digits(scoreB, language)}%</b></span>
       </div>
-
-      <!-- Scores -->
-      <div style="display: flex; gap: 18px; margin-bottom: 20px;">
-        <div style="flex: 1; text-align: center; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 20px 16px; position: relative;">
-          <div style="font-size: 10px; text-transform: uppercase; color: #94a3b8; letter-spacing: 2px; font-weight: 600; margin-bottom: 8px;">${t.personA}</div>
-          <div style="font-size: 46px; font-weight: 700; color: #1e293b; line-height: 1;">${scoreA}</div>
-          <div style="font-size: 11px; color: #94a3b8; margin-top: 4px;">${scoreLabel}</div>
-          <div style="width: 100%; height: 5px; background: #e2e8f0; border-radius: 3px; margin-top: 12px; overflow: hidden;">
-            <div style="width: ${data.personA_score}%; height: 100%; background: linear-gradient(90deg, #d4af37, #e6be8a); border-radius: 3px;"></div>
-          </div>
+    </section>
+    <section style="margin-top:12px">
+      <div style="font:800 10px Arial;color:#92701e;margin-bottom:6px">${labels.claims}</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;border:1px solid #ccc;background:#fafafa">
+        <div style="padding:9px 11px;border-${isFa ? 'left' : 'right'}:1px solid #ccc">
+          <b style="font-size:11px">${labels.a}</b><p style="font-size:10.5px;line-height:1.55;margin:5px 0 0;text-align:justify">${excerpt(data.personA_statement, 210)}</p>
         </div>
-        <div style="flex: 1; text-align: center; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 20px 16px; position: relative;">
-          <div style="font-size: 10px; text-transform: uppercase; color: #94a3b8; letter-spacing: 2px; font-weight: 600; margin-bottom: 8px;">${t.personB}</div>
-          <div style="font-size: 46px; font-weight: 700; color: #1e293b; line-height: 1;">${scoreB}</div>
-          <div style="font-size: 11px; color: #94a3b8; margin-top: 4px;">${scoreLabel}</div>
-          <div style="width: 100%; height: 5px; background: #e2e8f0; border-radius: 3px; margin-top: 12px; overflow: hidden;">
-            <div style="width: ${data.personB_score}%; height: 100%; background: linear-gradient(90deg, #d4af37, #e6be8a); border-radius: 3px;"></div>
-          </div>
-        </div>
+        <div style="padding:9px 11px"><b style="font-size:11px">${labels.b}</b><p style="font-size:10.5px;line-height:1.55;margin:5px 0 0;text-align:justify">${excerpt(data.personB_statement, 210)}</p></div>
       </div>
-
-      <!-- Statements Section -->
-      <div style="margin-bottom: 18px;">
-        <div style="font-size: 10px; text-transform: uppercase; color: #94a3b8; margin-bottom: 10px; letter-spacing: 3px; font-weight: 700; text-align: center;">${t.statementsSection}</div>
-        <div style="display: flex; flex-direction: column; gap: 10px;">
-          <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 14px 18px; ${isFa ? 'border-right' : 'border-left'}: 3px solid #1e293b;">
-            <div style="font-size: 10px; font-weight: 700; color: #1e293b; margin-bottom: 6px; letter-spacing: 1px;">${t.personA} — ${t.statement}</div>
-            <div style="font-size: 12.5px; line-height: 1.7; color: #475569; text-align: justify;">${stmtA}</div>
-          </div>
-          <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 14px 18px; ${isFa ? 'border-right' : 'border-left'}: 3px solid #d4af37;">
-            <div style="font-size: 10px; font-weight: 700; color: #1e293b; margin-bottom: 6px; letter-spacing: 1px;">${t.personB} — ${t.statement}</div>
-            <div style="font-size: 12.5px; line-height: 1.7; color: #475569; text-align: justify;">${stmtB}</div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Analysis -->
-      <div style="margin-bottom: 14px;">
-        <div style="font-size: 10px; text-transform: uppercase; color: #94a3b8; margin-bottom: 10px; letter-spacing: 3px; font-weight: 700;">${t.analysis}</div>
-        <div style="font-size: 13px; line-height: 1.85; color: #334155; text-align: justify;">${explanationText}</div>
-      </div>
-
-      <!-- Spacer to push seal to bottom -->
-      <div style="flex: 1; min-height: 5px;"></div>
-
-      <!-- Seal at bottom -->
-      <div style="text-align: center; padding-top: 16px; border-top: 1px solid #e2e8f0;">
-        <img src="${SEAL_URL}" onerror="this.style.display='none'" style="width: 72px; height: 72px; object-fit: contain; display: block; margin: 0 auto;" />
-        <div style="font-size: 10px; color: #94a3b8; margin-top: 10px; letter-spacing: 2px; font-weight: 500; text-transform: uppercase;">${t.certified}</div>
-      </div>
-
-      <!-- Ornamental bottom corner accents -->
-      <div style="position: absolute; bottom: 20px; ${isFa ? 'right' : 'left'}: 20px; width: 40px; height: 40px; border-bottom: 2px solid #d4af37; border-${isFa ? 'right' : 'left'}: 2px solid #d4af37; opacity: 0.5;"></div>
-      <div style="position: absolute; bottom: 20px; ${isFa ? 'left' : 'right'}: 20px; width: 40px; height: 40px; border-bottom: 2px solid #d4af37; border-${isFa ? 'left' : 'right'}: 2px solid #d4af37; opacity: 0.5;"></div>
-
-      <!-- Decorative bottom border -->
-      <div style="position: absolute; bottom: 0; left: 0; right: 0; height: 7px; background: linear-gradient(90deg, #1e293b 0%, #d4af37 50%, #1e293b 100%);"></div>
+    </section>
+    <section style="margin-top:12px">
+      <div style="font:800 11px Arial;color:#111;border-bottom:1px solid #b08d32;padding-bottom:4px">${labels.summary}</div>
+      <p style="font-size:11.5px;line-height:1.65;text-align:justify;margin:6px 0 0">${excerpt(data.executive_summary || data.explanation, 360)}</p>
+    </section>
+    <section style="margin-top:10px">
+      <div style="font:800 11px Arial;color:#111;border-bottom:1px solid #b08d32;padding-bottom:4px">${labels.reasoning}</div>
+      <p style="font-size:11px;line-height:1.65;text-align:justify;margin:6px 0 0">${excerpt(data.reasoning || data.explanation, 500)}</p>
+    </section>
+    <section style="margin-top:10px">
+      <div style="font:800 11px Arial;color:#111;border-bottom:1px solid #b08d32;padding-bottom:4px">${labels.settlement}</div>
+      <p style="font-size:11px;line-height:1.6;text-align:justify;margin:6px 0 0">${excerpt(data.settlement, 250)}</p>
+    </section>
+    <div style="margin-top:10px;padding:7px 10px;border:1px solid #ccc;background:#fafafa;font-size:10px;line-height:1.5">
+      <b>${labels.principle}:</b> ${excerpt(data.governing_principle, 180)}
+      <span style="margin-inline-start:12px"><b>${labels.confidence}:</b> ${escapeHtml(data.confidence || 'medium')}</span>
     </div>
-  `;
+    <footer style="margin-top:auto;border-top:2px solid #171717;padding:10px 12px 8px;display:flex;align-items:center;justify-content:space-between;gap:16px">
+      <div style="font-size:8.5px;line-height:1.55;color:#555;max-width:78%;text-align:justify">${labels.disclaimer}<br><b style="color:#111">MR JUDGE · AI DISPUTE ANALYSIS</b></div>
+      <div style="text-align:center"><img src="${SEAL_URL}" style="width:58px;height:58px;object-fit:contain"/><div style="font:700 8px Arial;color:#92701e">${labels.seal}</div></div>
+    </footer>
+  </main>`;
 
-  // Create temporary off-screen container
   const container = document.createElement('div');
-  container.style.cssText = 'position: fixed; left: -9999px; top: 0; background: white; z-index: -1;';
+  container.style.cssText = 'position:fixed;left:-10000px;top:0;width:794px;background:#fff;z-index:-1';
   container.innerHTML = template;
   document.body.appendChild(container);
-
-  const templateEl = container.firstElementChild;
-
-  // Wait for the seal image to load
-  const images = templateEl.querySelectorAll('img');
-  await Promise.all(Array.from(images).map(img => {
-    if (img.complete && img.naturalWidth > 0) return Promise.resolve();
-    return new Promise(resolve => {
-      img.onload = resolve;
-      img.onerror = resolve;
-    });
-  }));
-
-  // Small delay to ensure fonts are rendered
-  await new Promise(r => setTimeout(r, 100));
-
-  // Dynamically import html2canvas only when needed
-  const { default: html2canvas } = await import('html2canvas');
-  const canvas = await html2canvas(templateEl, {
-    scale: 2,
-    useCORS: true,
-    backgroundColor: '#ffffff',
-    width: 794,
-    height: 1123,
-    windowWidth: 794,
-    windowHeight: 1123,
-    logging: false
-  });
-
-  // Clean up
-  document.body.removeChild(container);
-
-  // Dynamically import jsPDF only when needed
-  const { default: jsPDF } = await import('jspdf');
-  const pdf = new jsPDF('p', 'mm', 'a4');
-  const pdfWidth = 210;
-  const pdfHeight = 297;
-  const imgData = canvas.toDataURL('image/png');
-  const imgWidth = pdfWidth;
-  const imgHeight = (canvas.height * imgWidth) / canvas.width;
-
-  if (imgHeight <= pdfHeight) {
-    pdf.addImage(imgData, 'PNG', 0, 0, imgWidth, imgHeight);
-  } else {
-    // Scale down proportionally to fit exactly one page
-    const ratio = pdfHeight / imgHeight;
-    const scaledWidth = imgWidth * ratio;
-    const x = (pdfWidth - scaledWidth) / 2;
-    pdf.addImage(imgData, 'PNG', x, 0, scaledWidth, pdfHeight);
+  try {
+    const images = [...container.querySelectorAll('img')];
+    await Promise.all(images.map((img) => img.complete ? Promise.resolve() : new Promise((resolve) => { img.onload = resolve; img.onerror = resolve; })));
+    if (document.fonts?.ready) await document.fonts.ready;
+    const { default: html2canvas } = await import('html2canvas');
+    const canvas = await html2canvas(container.firstElementChild, { scale: 2, useCORS: true, backgroundColor: '#fff', width: 794, height: 1123, windowWidth: 794, windowHeight: 1123, logging: false });
+    const { default: jsPDF } = await import('jspdf');
+    const pdf = new jsPDF('p', 'mm', 'a4');
+    pdf.addImage(canvas.toDataURL('image/png'), 'PNG', 0, 0, 210, 297);
+    pdf.save(`mr-judge-decree-${info.code}.pdf`);
+  } finally {
+    container.remove();
   }
-
-  const fileName = `mr-judge-verdict-${info.code}.pdf`;
-  pdf.save(fileName);
 }
