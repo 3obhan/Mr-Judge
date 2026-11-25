@@ -67,6 +67,7 @@ export default function NewDispute() {
         settlement: result.settlement,
         governing_principle: result.governing_principle,
         confidence: result.confidence,
+        analysis: result.analysis,
         language: formData.language,
         status: 'analyzed'
       });
