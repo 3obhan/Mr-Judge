@@ -43,6 +43,7 @@ export function shouldFallback(status, text) {
 
 const partsOf = (body) => (body?.contents || []).flatMap((c) => c?.parts || []);
 const textOf = (body) => partsOf(body).map((p) => p.text).filter(Boolean).join('\n\n');
+const systemOf = (body) => (body?.systemInstruction?.parts || []).map((p) => p.text).filter(Boolean).join('\n\n');
 const audioOf = (body) => partsOf(body).find((p) => p.inlineData?.data && /^audio\//i.test(p.inlineData.mimeType || ''));
 
 const asGemini = (text) => JSON.stringify({ candidates: [{ content: { role: 'model', parts: [{ text }] }, finishReason: 'STOP' }] });
@@ -56,12 +57,16 @@ function describeSchema(schema) {
 async function chat(env, body) {
   const schema = body?.generationConfig?.responseSchema;
   const text = textOf(body);
+  const system = systemOf(body);
   const res = await fetch(`${baseUrl(env)}/chat/completions`, {
     method: 'POST',
     headers: { Authorization: `Bearer ${env.FALLBACK_API_KEY}`, 'Content-Type': 'application/json' },
     body: JSON.stringify({
       model: env.FALLBACK_MODEL || 'llama-3.3-70b-versatile',
-      messages: [{ role: 'user', content: schema ? `${text}\n\n${describeSchema(schema)}` : text }],
+      messages: [
+        ...(system ? [{ role: 'system', content: system }] : []),
+        { role: 'user', content: schema ? `${text}\n\n${describeSchema(schema)}` : text },
+      ],
       temperature: 0.3,
       ...(schema ? { response_format: { type: 'json_object' } } : {}),
     }),

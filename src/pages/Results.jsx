@@ -89,20 +89,7 @@ export default function Results() {
       {/* Results Section */}
       <div className="px-6 py-12 md:py-16">
         <VerdictDisplay
-          result={{
-            personA_score: dispute.personA_score,
-            personB_score: dispute.personB_score,
-            verdict: dispute.verdict,
-            explanation: dispute.explanation,
-            executive_summary: dispute.executive_summary,
-            reasoning: dispute.reasoning,
-            settlement: dispute.settlement,
-            governing_principle: dispute.governing_principle,
-            confidence: dispute.confidence,
-            personA_statement: dispute.personA_statement,
-            personB_statement: dispute.personB_statement,
-            analysis: dispute.analysis
-          }}
+          result={dispute}
           onReset={handleReset}
           language={dispute.language || 'en'}
         />

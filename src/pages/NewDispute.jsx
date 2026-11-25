@@ -56,18 +56,9 @@ export default function NewDispute() {
 
       // Save dispute to database
       const dispute = createDispute({
+        ...result,
         personA_statement: formData.personA_statement,
         personB_statement: formData.personB_statement,
-        personA_score: result.personA_score,
-        personB_score: result.personB_score,
-        verdict: result.verdict,
-        explanation: result.explanation,
-        executive_summary: result.executive_summary,
-        reasoning: result.reasoning,
-        settlement: result.settlement,
-        governing_principle: result.governing_principle,
-        confidence: result.confidence,
-        analysis: result.analysis,
         language: formData.language,
         status: 'analyzed'
       });

@@ -20,7 +20,7 @@ import {
 /**
  * VerdictDisplay Component
  * Animated display of the AI verdict with scores and explanation
- * Includes PDF download functionality (jspdf & html2canvas loaded on demand)
+ * Includes PDF download functionality (pdf-lib loaded on demand)
  */
 export default function VerdictDisplay({ result, onReset, language = 'en' }) {
   // language = language the verdict was written in (also used for the PDF); uiLang = current app language
@@ -40,9 +40,12 @@ export default function VerdictDisplay({ result, onReset, language = 'en' }) {
   // Determine verdict icon and color
   const getVerdictStyle = () => {
     const { personA_score, personB_score } = result;
-    const diff = Math.abs(personA_score - personB_score);
+    // Rulings saved by the earlier judge have no `winner`: for them a gap of 10 or less meant "both".
+    const isTie = result.winner
+      ? result.winner === 'equal'
+      : Math.abs(personA_score - personB_score) <= 10;
 
-    if (diff <= 10) {
+    if (isTie) {
       return {
         icon: Equal,
         color: 'text-amber-600 dark:text-amber-500',
@@ -69,7 +72,7 @@ export default function VerdictDisplay({ result, onReset, language = 'en' }) {
   const verdictStyle = getVerdictStyle();
   const VerdictIcon = verdictStyle.icon;
 
-  // PDF Download handler — dynamically import pdfGenerator (which loads jspdf & html2canvas)
+  // PDF Download handler — dynamically import pdfGenerator (which loads pdf-lib)
   const handleDownload = async () => {
     setGeneratingPdf(true);
     try {

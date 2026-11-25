@@ -21,7 +21,13 @@ const toGeminiSchema = (schema) => {
 
 const REQUEST_TIMEOUT_MS = 60_000;
 
-async function generateOnce(body, model, kind, ticket) {
+// Gemini 4 models take a thinking level; older models reject the setting, so it is added per model.
+const bodyFor = (body, model, kind) => (kind === 'judge' && /^gemini-4-/.test(model)
+  ? { ...body, generationConfig: { ...body.generationConfig, thinkingConfig: { thinkingLevel: 'medium' } } }
+  : body);
+
+async function generateOnce(baseBody, model, kind, ticket) {
+  const body = bodyFor(baseBody, model, kind);
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
   let res;
@@ -81,13 +87,18 @@ async function generateOnce(body, model, kind, ticket) {
   return text;
 }
 
-// Remember which model worked last, per purpose, so later calls do not retry the broken ones first.
+// Voice only: remember which model worked last, so later calls do not retry the broken ones first.
+// Judging always starts with the primary model, so one bad moment does not downgrade the rest of the visit.
 const preferred = {};
 
 // Should we try the next model? Yes when this one is gone / not available to the key / overloaded.
-const shouldTryNext = (err) => {
+const shouldTryNext = (err, kind) => {
   const status = err?.status;
   const detail = String(err?.detail || err?.message || '');
+  if (kind === 'judge' && !/api key|referer|referrer|DAILY_LIMIT|NOT_CONFIGURED|GEMINI_API_KEY/i.test(detail)) {
+    // Each model has its own quota and speed: a busy, slow or exhausted one must not stop the judgment.
+    if (detail === 'timeout' || [429, 500, 502, 504].includes(status)) return true;
+  }
   if (/api key|referer|referrer|quota|billing/i.test(detail)) return false;
   if (/NOT_CONFIGURED/.test(detail)) return false; // a setup problem on the server: other models will not help
   if (status === 404 || status === 503) return true;
@@ -106,14 +117,15 @@ const isTransient = (err) => {
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const MAX_RETRIES = 2;
 
-async function generateWithRetry(body, model, kind, ticket) {
+async function generateWithRetry(body, model, kind, ticket, maxRetries) {
   let lastErr;
-  for (let attempt = 0; attempt <= MAX_RETRIES; attempt += 1) {
+  for (let attempt = 0; attempt <= maxRetries; attempt += 1) {
     try {
       return await generateOnce(body, model, kind, ticket);
     } catch (err) {
       lastErr = err;
-      if (!isTransient(err) || attempt === MAX_RETRIES) throw err;
+      const slowJudge = kind === 'judge' && err.detail === 'timeout' && maxRetries < MAX_RETRIES;
+      if (!isTransient(err) || slowJudge || attempt === maxRetries) throw err;
       await sleep(1000 * (attempt + 1));
     }
   }
@@ -121,17 +133,19 @@ async function generateWithRetry(body, model, kind, ticket) {
 }
 
 async function generate(body, models, kind, ticket) {
-  const first = preferred[kind];
+  const first = kind === 'stt' ? preferred[kind] : null;
   const order = first ? [first, ...models.filter((m) => m !== first)] : models;
   let lastErr;
-  for (const model of order) {
+  for (const [index, model] of order.entries()) {
+    // A judge model with a backup behind it is retried once; together this stays within the server's attempts per ticket.
+    const maxRetries = kind === 'judge' && index < order.length - 1 ? 1 : MAX_RETRIES;
     try {
-      const text = await generateWithRetry(body, model, kind, ticket);
+      const text = await generateWithRetry(body, model, kind, ticket, maxRetries);
       preferred[kind] = model;
       return text;
     } catch (err) {
       lastErr = err;
-      if (!shouldTryNext(err)) throw err;
+      if (!shouldTryNext(err, kind)) throw err;
       console.warn(`Gemini model "${model}" failed (${err.detail || err.message}); trying the next one`);
     }
   }
@@ -151,8 +165,9 @@ const parseJsonLoose = (text) => {
 /**
  * Generate content. Returns a parsed object if jsonSchema is given, otherwise a string.
  */
-export async function callGemini(prompt, jsonSchema = null, { ticket } = {}) {
+export async function callGemini(prompt, jsonSchema = null, { ticket, systemInstruction } = {}) {
   const body = { contents: [{ role: 'user', parts: [{ text: prompt }] }] };
+  if (systemInstruction) body.systemInstruction = { parts: [{ text: systemInstruction }] };
   if (jsonSchema) {
     body.generationConfig = {
       responseMimeType: 'application/json',

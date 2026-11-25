@@ -22,7 +22,7 @@ import { authUser, creditsKey } from './_lib/auth.js';
 import { fallbackConfigured, shouldFallback, runFallback } from './_lib/fallback.js';
 
 // Keep this allow-list aligned with src/lib/llmConfig.js.
-const ALLOWED_MODELS = (process.env.GEMINI_ALLOWED_MODELS || 'gemini-3.8-flash,gemini-3.5-flash-lite')
+const ALLOWED_MODELS = (process.env.GEMINI_ALLOWED_MODELS || 'gemini-4-hydrogen,gemini-3.8-flash,gemini-3.5-flash-lite')
   .split(',').map((s) => s.trim()).filter(Boolean);
 
 const MAX_TICKET_ATTEMPTS = 8;
@@ -31,6 +31,8 @@ const STT_PER_DAY = Number(process.env.STT_PER_DAY || 60);
 
 // Avoid spending the whole Vercel function window waiting on a stalled primary provider.
 const GEMINI_TIMEOUT_MS = 18_000;
+// Gemini 4 thinks before it answers, so it gets longer (still inside the 60 s limit in vercel.json).
+const THINKING_TIMEOUT_MS = 40_000;
 
 export default async function handler(req, res) {
   if (guard(req, res)) return;
@@ -74,7 +76,7 @@ export default async function handler(req, res) {
     if (key && env.AI_PRIMARY !== 'fallback') {
       try {
         const controller = new AbortController();
-        const timer = setTimeout(() => controller.abort(), GEMINI_TIMEOUT_MS);
+        const timer = setTimeout(() => controller.abort(), /^gemini-4-/.test(model) ? THINKING_TIMEOUT_MS : GEMINI_TIMEOUT_MS);
         try {
           const upstream = await fetch(
             `${env.GEMINI_API_BASE || 'https://generativelanguage.googleapis.com'}/v1beta/models/${encodeURIComponent(model)}:generateContent`,
