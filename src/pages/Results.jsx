@@ -100,7 +100,8 @@ export default function Results() {
             governing_principle: dispute.governing_principle,
             confidence: dispute.confidence,
             personA_statement: dispute.personA_statement,
-            personB_statement: dispute.personB_statement
+            personB_statement: dispute.personB_statement,
+            analysis: dispute.analysis
           }}
           onReset={handleReset}
           language={dispute.language || 'en'}
