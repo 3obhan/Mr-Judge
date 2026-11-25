@@ -133,6 +133,17 @@ export async function spendCredit() {
   return d;
 }
 
+/** Locks a ticket only after the complete analysis has been parsed and saved. */
+export async function completeCredit(ticket) {
+  try {
+    await authedApi('credits', { action: 'complete', ticket });
+    return true;
+  } catch (error) {
+    console.warn('Could not mark analysis ticket complete:', error);
+    return false;
+  }
+}
+
 /** Gives the credit back when the analysis failed. Never throws. @returns {Promise<number|null>} new balance */
 export async function refundCredit(ticket) {
   try {
