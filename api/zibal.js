@@ -2,41 +2,34 @@
  * Zibal payment gateway
  *   { action: 'create', callbackUrl } -> { trackId, payUrl }
  *   { action: 'verify', trackId }     -> { credits, granted, refNumber }
- *
- * Env: ZIBAL_MERCHANT  (کد مرچنت از پنل زیبال)
- * برای تست: ZIBAL_MERCHANT=zibal
  */
+import { ProxyAgent } from 'undici';
 import { cmd } from './_lib/redis.js';
 import { guard, body, originAllowed, PACK_CREDITS, PACK_PRICE_TOMAN } from './_lib/http.js';
 import { authUser, creditsKey, grantPurchase } from './_lib/auth.js';
-import { ProxyAgent } from 'undici'
-
-const proxyAgent = process.env.FIXIE_URL
-    ? new ProxyAgent(process.env.FIXIE_URL)
-    : undefined
 
 const merchant = () => process.env.ZIBAL_MERCHANT || '';
-const AMOUNT_RIAL = () => PACK_PRICE_TOMAN * 10; // زیبال ریال می‌گیرد
+const amountRial = () => PACK_PRICE_TOMAN * 10;
+const apiBase = () => process.env.ZIBAL_API_BASE || 'https://gateway.zibal.ir';
+const proxyAgent = process.env.FIXIE_URL ? new ProxyAgent(process.env.FIXIE_URL) : undefined;
 
-const safeUrl = (req, u) => {
+const safeUrl = (req, value) => {
   try {
-    const o = new URL(u).origin;
-    return originAllowed(req, o) ? u : null;
+    const url = new URL(value);
+    return originAllowed(req, url.origin) ? value : null;
   } catch {
     return null;
   }
 };
 
-const apiBase = () => process.env.ZIBAL_API_BASE || 'https://gateway.zibal.io';
-
 async function zibal(path, payload) {
-  const r = await fetch(`${apiBase()}/v1/${path}`, {
+  const response = await fetch(`${apiBase()}/v1/${path}`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
-    body: JSON.stringify({ merchant: merchant(), ...payload }), 
-    dispatcher: proxyAgent,
+    body: JSON.stringify({ merchant: merchant(), ...payload }),
+    ...(proxyAgent ? { dispatcher: proxyAgent } : {}),
   });
-  return r.json().catch(() => ({}));
+  return response.json().catch(() => ({}));
 }
 
 export default async function handler(req, res) {
@@ -53,33 +46,32 @@ export default async function handler(req, res) {
       if (!callbackUrl) return res.status(400).json({ error: 'Bad callback URL' });
 
       const data = await zibal('request', {
-        amount: AMOUNT_RIAL(),
+        amount: amountRial(),
         callbackUrl,
-        description: `آقای قاضی - ${PACK_CREDITS} تحلیل اختلاف`,
-        orderId: user.uid, // اختیاری
+        description: `Mr Judge - ${PACK_CREDITS} dispute analyses`,
+        orderId: user.uid,
       });
 
       if (data.result !== 100 || !data.trackId) {
         console.error('zibal request failed:', data);
-        return res.status(502).json({ error: 'ZIBAL_CREATE_FAILED', zibalResult: data.result });
+        return res.status(502).json({ error: 'ZIBAL_CREATE_FAILED', zibalCode: data.result });
       }
 
-      // پرداخت را به این کاربر bind کن
       await cmd('SET', `zb:${data.trackId}`, user.uid, 'EX', 86400);
-
       return res.status(200).json({
         trackId: data.trackId,
-        payUrl: `https://gateway.zibal.io
+        payUrl: `https://gateway.zibal.ir/start/${data.trackId}`,
+      });
     }
 
     if (action === 'verify') {
-      if (!trackId) return res.status(400).json({ error: 'Bad trackId' });
+      if (!trackId || !/^\\d{1,30}$/.test(String(trackId))) return res.status(400).json({ error: 'Bad trackId' });
       if ((await cmd('GET', `zb:${trackId}`)) !== user.uid) {
         return res.status(404).json({ error: 'UNKNOWN_PAYMENT' });
       }
 
-      // هر پرداخت فقط یک بار اعتبار بدهد
-      if ((await cmd('SET', `pay:zb:${trackId}`, '1', 'NX')) !== 'OK') {
+      const paymentKey = `pay:zb:${trackId}`;
+      if ((await cmd('SET', paymentKey, '1', 'NX')) !== 'OK') {
         return res.status(200).json({
           credits: Number(await cmd('GET', creditsKey(user.uid))) || 0,
           granted: false,
@@ -88,30 +80,23 @@ export default async function handler(req, res) {
 
       try {
         const data = await zibal('verify', { trackId: Number(trackId) });
-
-        // 100 = موفق، 201 = قبلاً تأیید شده
-        if (![100, 201].includes(data.result)) {
-          throw Object.assign(new Error('Not paid'), { code: 'NOT_PAID', zibalResult: data.result });
+        if (![100, 201].includes(data.result) || (data.amount && Number(data.amount) !== amountRial())) {
+          throw Object.assign(new Error('Payment not verified'), { code: 'NOT_PAID', zibalCode: data.result });
         }
-
         const credits = await grantPurchase(user.uid, PACK_CREDITS);
-        return res.status(200).json({
-          credits,
-          granted: true,
-          refNumber: data.refNumber ?? null,
-        });
-      } catch (e) {
-        await cmd('DEL', `pay:zb:${trackId}`); // اجازه retry
-        if (e.code === 'NOT_PAID') {
-          return res.status(402).json({ error: 'NOT_PAID', zibalResult: e.zibalResult });
+        return res.status(200).json({ credits, granted: true, refNumber: data.refNumber ?? null });
+      } catch (error) {
+        await cmd('DEL', paymentKey);
+        if (error.code === 'NOT_PAID') {
+          return res.status(402).json({ error: 'NOT_PAID', zibalCode: error.zibalCode });
         }
-        throw e;
+        throw error;
       }
     }
 
     return res.status(400).json({ error: 'Unknown action' });
-  } catch (e) {
-    console.error('zibal error:', e);
+  } catch (error) {
+    console.error('zibal error:', error);
     return res.status(500).json({ error: 'SERVER_ERROR' });
   }
 }
