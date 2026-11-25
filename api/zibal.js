@@ -65,7 +65,10 @@ export default async function handler(req, res) {
     }
 
     if (action === 'verify') {
-      if (!trackId || !/^\\d{1,30}$/.test(String(trackId))) return res.status(400).json({ error: 'Bad trackId' });
+      // trackId is numeric; keep the regex as a single escaped digit class.
+      if (!trackId || !/^\d{1,30}$/.test(String(trackId))) {
+        return res.status(400).json({ error: 'Bad trackId' });
+      }
       if ((await cmd('GET', `zb:${trackId}`)) !== user.uid) {
         return res.status(404).json({ error: 'UNKNOWN_PAYMENT' });
       }
