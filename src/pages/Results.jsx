@@ -94,6 +94,11 @@ export default function Results() {
             personB_score: dispute.personB_score,
             verdict: dispute.verdict,
             explanation: dispute.explanation,
+            executive_summary: dispute.executive_summary,
+            reasoning: dispute.reasoning,
+            settlement: dispute.settlement,
+            governing_principle: dispute.governing_principle,
+            confidence: dispute.confidence,
             personA_statement: dispute.personA_statement,
             personB_statement: dispute.personB_statement
           }}
