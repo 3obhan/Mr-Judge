@@ -11,9 +11,7 @@ globalThis.fetch = async (url, init) => {
   calls.push({ url: String(url), init });
   if (String(url).includes('/api/account')) return new Response(JSON.stringify({ accountKey: 'AAAA-BBBB-CCCC-DDDD-EEEE', credits: 2 }), { status: 200 });
   const prompt = JSON.parse(init.body).body.contents[0].parts[0].text;
-  const payload = prompt.includes('PHASE 1')
-    ? { claims_a: ['A claim'], claims_b: ['B claim'], agreed_points: [], disputed_facts: ['disputed'], contradictions: [], evidence_a: [], evidence_b: [], unknowns: ['unknown'], responsibility_factors: ['responsibility'] }
-    : answer;
+  const payload = answer;
   return new Response(JSON.stringify({ candidates: [{ content: { parts: [{ text: JSON.stringify(payload) }] } }] }), { status: 200 });
 };
 const { judgeDispute } = await import(new URL('../src/lib/judge.js', import.meta.url));
@@ -24,12 +22,12 @@ for (const [code, aiName, verdictA] of [['en', 'English', 'Person A is more just
   ['es', 'Spanish', 'La persona A tiene más razón'], ['ru', 'Russian', 'Сторона А права в большей степени'], ['tr', 'Turkish', 'A Kişisi daha haklı'], ['ar', 'Arabic', 'الحق مع الشخص أ بدرجة أكبر']]) {
   const before = calls.filter((call) => String(call.url).includes('/api/gemini')).length;
   const r = await judgeDispute({ ...base, language: code });
-  assert.equal(calls.filter((call) => String(call.url).includes('/api/gemini')).length - before, 2, 'each paid judgment uses exactly two model calls');
-  assert.match(promptOf(), new RegExp(`Write the explanation in clear, natural ${aiName}\\.`), `${code}: the AI is told to write in ${aiName}`);
+  assert.equal(calls.filter((call) => String(call.url).includes('/api/gemini')).length - before, 1, 'each paid judgment uses exactly one model call');
+  assert.match(promptOf(), new RegExp(`Write every user-facing field in clear, natural ${aiName}\\.`), `${code}: the AI is told to write in ${aiName}`);
   assert.equal(r.verdict, verdictA, `${code}: verdict wording`); assert.equal(r.explanation, 'In 3 Punkten hat A recht.', `${code}: digits stay as they are`);
 }
 let r = await judgeDispute({ ...base, language: 'fa' });
-assert.match(promptOf(), /تمام متن‌های خروجی را به فارسی روان/); assert.equal(r.verdict, 'شخص الف حق بیشتری دارد'); assert.equal(r.explanation, 'In ۳ Punkten hat A recht.', 'Persian digits only for Persian');
+assert.match(promptOf(), /تمام فیلدهای متنی خروجی را به فارسی روان/); assert.equal(r.verdict, 'شخص الف حق بیشتری دارد'); assert.equal(r.explanation, 'In ۳ Punkten hat A recht.', 'Persian digits only for Persian');
 r = await judgeDispute({ ...base, language: 'xx' }); assert.match(promptOf(), /natural English\./, 'unknown language -> English'); assert.equal(r.verdict, 'Person A is more justified');
 answer = { personA_score: 50, personB_score: 55, explanation: 'x' }; r = await judgeDispute({ ...base, language: 'de' }); assert.equal(r.verdict, 'Beide Seiten haben teilweise recht');
 answer = { personA_score: 10, personB_score: 20, explanation: 'x' }; r = await judgeDispute({ ...base, language: 'ru' }); assert.equal(r.verdict, 'Ни одна из сторон не права');
