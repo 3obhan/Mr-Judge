@@ -88,6 +88,7 @@ const ext = http.createServer((req, res) => {
     if (u.startsWith('/v1beta/models/')) {
       geminiCalls += 1;
       if (geminiMode === '429') return send(429, { error: { message: 'Resource has been exhausted (e.g. check quota).' } });
+      if (geminiMode === '503') return send(503, { error: { message: 'Service temporarily unavailable.' } });
       if (geminiMode === 'badrequest') return send(400, { error: { message: 'Invalid JSON payload received.' } });
       if (geminiMode === 'location') return send(400, { error: { message: 'User location is not supported for the API use.' } });
       return send(200, { candidates: [{ content: { parts: [{ text: '{"ok":true}' }] } }] });
@@ -231,6 +232,12 @@ assert.equal(r.status, 200, 'Gemini out of quota -> the backup answers'); assert
 assert.equal(groqCalls[0].auth, 'Bearer fb-key'); assert.equal(groqCalls[0].json.model, 'llama-3.3-70b-versatile'); assert.deepEqual(groqCalls[0].json.response_format, { type: 'json_object' });
 assert.match(groqCalls[0].json.messages[0].content, /judge this[\s\S]*"from" \(string\): who answered/, 'the JSON fields are described to the backup model');
 assert.equal((await call('credits', { action: 'refund', ticket: tk }, { key: fbKey })).status, 409, 'an answer from the backup also spends the credit');
+tk = (await call('credits', { action: 'spend' }, { key: fbKey })).body.ticket;
+geminiMode = '503'; groqCalls.length = 0;
+r = await call('gemini', gem({ ticket: tk }), { key: fbKey });
+assert.equal(r.status, 200, 'Gemini 503 service unavailable -> the backup answers');
+assert.equal(groqCalls.length, 1, '503 invokes the configured backup exactly once after Gemini fails');
+
 tk = (await call('credits', { action: 'spend' }, { key: fbKey })).body.ticket;
 geminiMode = 'badrequest'; groqCalls.length = 0; r = await call('gemini', gem({ ticket: tk }), { key: fbKey });
 assert.equal(r.status, 400, 'a plain bad request is not sent to the backup'); assert.equal(groqCalls.length, 0);
