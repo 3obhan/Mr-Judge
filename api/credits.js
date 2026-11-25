@@ -3,7 +3,7 @@
  *   { action: 'balance' }               -> { credits }
  *   { action: 'spend' }                 -> { ticket, credits }   takes 1 credit, returns a one-time analysis ticket
  *                                          or 402 { error: 'NO_CREDITS' }
- *   { action: 'refund', ticket }        -> { credits }           gives the credit back if the analysis never succeeded
+ *   { action: 'complete', ticket }      -> marks a successfully delivered analysis as consumed\n *   { action: 'refund', ticket }        -> { credits }           gives the credit back if no analysis was delivered
  */
 import { cmd } from './_lib/redis.js';
 import { guard, body } from './_lib/http.js';
@@ -32,6 +32,14 @@ export default async function handler(req, res) {
       const t = Array.from(crypto.getRandomValues(new Uint8Array(16)), (b) => b.toString(16).padStart(2, '0')).join('');
       await cmd('SET', `t:${t}`, user.uid, 'EX', TICKET_TTL_SECONDS);
       return res.status(200).json({ ticket: t, credits: left });
+    }
+
+    if (action === 'complete') {
+      if (!/^[a-f0-9]{32}$/.test(String(ticket || ''))) return res.status(400).json({ error: 'Bad ticket' });
+      const owner = await cmd('GET', `t:${ticket}`);
+      if (owner !== user.uid) return res.status(404).json({ error: 'UNKNOWN_TICKET' });
+      await cmd('SET', `tc:${ticket}`, '1', 'EX', TICKET_TTL_SECONDS);
+      return res.status(200).json({ completed: true });
     }
 
     if (action === 'refund') {
